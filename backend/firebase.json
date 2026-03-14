@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "quick-imoveis-8005d",
+  "private_key_id": "968be0f78d3d738e72fc1f862ef44f1ba3a48bc8",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDGML6cvH+eKjQl\nicpRVYbz2dzdFyzGNoTqW7JzJJNMI1GGyu5Ui81plRgqyEO5jCjsjrzIcKQYbqYn\nLZKiHH4lE4LfEnkOAC1F1u734VzfU6tY0Bp3hGPV1ZqBjXKt+hShpdef9B4pGNJc\nTa+INquRWD+fe4cLXWutCnK4/1x3YOHVPL5y+vD0WcygkKk11JAjFaBTToha2shD\nAnJKI17thBbLbT8poJxQklJg5E2LWtT8CPd4dM8qdOTYTQ+c/J+BWbLz/ghGVC0T\nyU2oCVdhClvviovJ1hRVRWF85EZZHQhePfr78+TNZBA701rNr0yIhD50sUPdB3Vg\nFb61p5dLAgMBAAECggEASoxwTo2a5VgTqGEVoJVuv0/eQ62hcmd0hKD8VVJXM6b/\nVhgEIPo7SHFEF2egDe26QQ0J1s2D9Aq+5fK++sqD6pdVvWn57fnEDcakucnkAL88\nrxoMMpOyZ+9CgGO/1NBCLXGv02NkauoCyqSQF8kUrQXIXMl+yRgZVgwdjhfD5MT7\nhnz/jqLu61bUY20NMCKt2kJaz+Uvs6MyIWFppBnvIxv5yjHLcO2XB79/j1s3MyHi\nCSjaq805/+44RMpgRMHzBrYnCBlD5q5T0WxS0u+XGcRohOwYJHqqwbEpe84NLFBr\n+i7HaVkfu5N/J+kMaIUEsJqi3haMGw+09EglILAiCQKBgQDjuFD8qMk7iLVgh4hO\nr8pE8DDmeATbp8/+pjZPXDwNe156XWidZXBIu0Tg4ULdB87NI7qd8FMKsi9/vvx3\nDiN1KgG4jEtnVjvT8IZI9DojKgAm9rr3si5BjdUL75slWDGKpvLl+TqChoFWVOaA\nQt/Szsb81/ZJN0iylHlINYyZIwKBgQDezZ9kZJ7zW4nBy566n0weIStyDG2yxruT\nMg6iktAXE+9nVKhZ+rgGToJgYXsVMm+ZwXCgXANni5mbq7O/wP/PMUQdYNs3rwRA\n8Z8DsT7IXZKLpm1md1e+dnWSTEQroOwR0TSvtLlMyz9ZxXFO2ycm4Tv+A/YFB/Sw\nV3zbmQqvuQKBgF4TsImhJXmN8fjOJVb0suimHl2oacFhY8F9Y2SH41tig1akLmsQ\nFEJH853AEkKETkBbqWZEedoqYQsymNSKp8VotEtM0n3/lzno3WFYXIhYerWeKwHX\nv9pfQQvsUjksZVM1w5WU0EJKVTaYXp3Qgu1xda3RfrMivsrgIfbeAJbnAoGABgqL\nRNyZlr2nqZKM1kCVfseldu0xWESdN2uHDA9xBv8qYaHhAreSn9EnJdfez39TmVau\naBq2mOsnGhp4wD1KcmLClw1WRFdBhUVH64C11Bb9bz3u/3VC8s4hd/sLaidt3znN\n9OmwkI1+RT/eR6YXlK1MxCF1XUOO9e0ZXJb0vDkCgYEAvVnj+BVi2S1wjas5NviN\nmEPjgunqssEn0PFTKflvl4MSTqVcu+3mJNvscZtVuUr/WCDAE82HqbJtXRRXp1Pn\nVfCZqs9W0WaUFeoKxQJqoqDtp/rFeqDaxId9u3wpwd2fgd9+FCEBOjmePxWCzrZa\nXt153S9PnQWdRem+8jaUiDw=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@quick-imoveis-8005d.iam.gserviceaccount.com",
+  "client_id": "104897116515404088081",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40quick-imoveis-8005d.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

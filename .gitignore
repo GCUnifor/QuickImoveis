@@ -1,0 +1,34 @@
+### Node e dependências
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+### Ambientes
+.env*
+
+### Build e cache
+dist/
+build/
+coverage/
+.next/
+.expo/
+*.tsbuildinfo
+
+### Configurações locais
+.DS_Store
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+### Arquivos temporários
+*.log
+*.swp
+*.bak
+*.tmp
+
+### Outros
+public/
+expo-debug.log
+expo-error.log
