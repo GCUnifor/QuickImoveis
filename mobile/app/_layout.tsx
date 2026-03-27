@@ -4,12 +4,20 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { PropertyProvider } from '@/context/PropertyContext';
+import { AuthProvider } from '@/context/AuthContext';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
 export default function RootLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <AuthProvider>
+      <PropertyProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </PropertyProvider>
+    </AuthProvider>
+  );
 }
 

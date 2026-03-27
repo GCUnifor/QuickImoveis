@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import {
   View,
   Text,
@@ -10,8 +11,10 @@ import {
 } from "react-native";
 import { router, type Href } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useAuth, UserRole } from "@/context/AuthContext";
 
 export default function LoginScreen() {
+  const { userRole, setUserRole } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +29,7 @@ export default function LoginScreen() {
         <View style={styles.container}>
           <View style={styles.logoBox}>
             <MaterialCommunityIcons
-              name="office-building-outline"
+              name="office-building"
               size={32}
               color="#FFFFFF"
             />
@@ -36,6 +39,21 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>Faça login na sua conta</Text>
 
           <View style={styles.form}>
+            <View style={styles.roleContainer}>
+              <TouchableOpacity 
+                style={[styles.roleBtn, userRole === 'buyer' && styles.roleBtnActive]}
+                onPress={() => setUserRole('buyer')}
+              >
+                <Text style={[styles.roleBtnText, userRole === 'buyer' && styles.roleBtnTextActive]}>Comprador</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.roleBtn, userRole === 'broker' && styles.roleBtnActive]}
+                onPress={() => setUserRole('broker')}
+              >
+                <Text style={[styles.roleBtnText, userRole === 'broker' && styles.roleBtnTextActive]}>Corretor</Text>
+              </TouchableOpacity>
+            </View>
+
             <Text style={styles.label}>E-mail</Text>
             <View style={styles.inputWrapper}>
               <Feather
@@ -89,7 +107,10 @@ export default function LoginScreen() {
               <Text style={styles.forgotText}>Esqueceu sua senha?</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.primaryButton}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => router.replace("/(tabs)" as Href)}
+            >
               <Text style={styles.primaryButtonText}>Entrar</Text>
             </TouchableOpacity>
 
@@ -154,6 +175,30 @@ const styles = StyleSheet.create({
   },
   form: {
     width: "100%",
+  },
+  roleContainer: {
+    flexDirection: "row",
+    backgroundColor: "#E2E8F0",
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 20,
+  },
+  roleBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRadius: 10,
+  },
+  roleBtnActive: {
+    backgroundColor: "#0A73D9",
+  },
+  roleBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#64748B",
+  },
+  roleBtnTextActive: {
+    color: "#FFFFFF",
   },
   label: {
     fontSize: 16,
