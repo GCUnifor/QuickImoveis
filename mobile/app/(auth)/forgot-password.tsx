@@ -7,12 +7,35 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
+import { forgotPassword } from "../../services/auth";
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      Alert.alert("Atenção", "Informe seu e-mail.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const data = await forgotPassword({ email: email.trim() });
+      Alert.alert("Sucesso", data.message || "Código enviado por e-mail.");
+    } catch (error) {
+      Alert.alert(
+        "Erro",
+        error instanceof Error ? error.message : "Falha ao enviar código."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -42,8 +65,14 @@ export default function ForgotPasswordScreen() {
             />
           </View>
 
-          <TouchableOpacity style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Enviar instruções</Text>
+          <TouchableOpacity
+            style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
+            onPress={handleForgotPassword}
+            disabled={loading}
+          >
+            <Text style={styles.primaryButtonText}>
+              {loading ? "Enviando..." : "Enviar instruções"}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -52,14 +81,8 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#F1F5F9",
-  },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: "center",
-  },
+  safe: { flex: 1, backgroundColor: "#F1F5F9" },
+  scroll: { flexGrow: 1, justifyContent: "center" },
   container: {
     width: "100%",
     maxWidth: 430,
@@ -107,9 +130,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 24,
   },
-  leftIcon: {
-    marginRight: 10,
-  },
+  leftIcon: { marginRight: 10 },
   input: {
     flex: 1,
     height: "100%",
@@ -123,6 +144,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  primaryButtonDisabled: { opacity: 0.7 },
   primaryButtonText: {
     color: "#FFFFFF",
     fontSize: 17,

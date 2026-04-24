@@ -7,9 +7,11 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Alert,
 } from "react-native";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { signUp } from "../../services/auth";
 
 function isValidEmail(email: string) {
   return /\S+@\S+\.\S+/.test(email.trim());
@@ -35,7 +37,7 @@ function formatCreci(value: string) {
 }
 
 function isValidCreci(value: string) {
-  return /^\d{6}-[A-Z]{2}$/.test(value);
+  return /^\\d{6}-[A-Z]{2}$/.test(value);
 }
 
 export default function RegisterBrokerScreen() {
@@ -46,6 +48,7 @@ export default function RegisterBrokerScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const nameError =
     fullName.trim().length > 0 && fullName.trim().length < 3
@@ -58,7 +61,7 @@ export default function RegisterBrokerScreen() {
       : "";
 
   const phoneError =
-    phone.length > 0 && phone.replace(/\D/g, "").length < 11
+    phone.length > 0 && phone.replace(/\\D/g, "").length < 11
       ? "Digite um telefone válido com DDD."
       : "";
 
@@ -81,12 +84,47 @@ export default function RegisterBrokerScreen() {
     return (
       fullName.trim().length >= 3 &&
       isValidEmail(email) &&
-      phone.replace(/\D/g, "").length === 11 &&
+      phone.replace(/\\D/g, "").length === 11 &&
       isValidCreci(creci) &&
       password.length >= 6 &&
       confirmPassword === password
     );
   }, [fullName, email, phone, creci, password, confirmPassword]);
+
+  async function handleRegisterBroker() {
+    if (!isFormValid || loading) return;
+
+    try {
+      setLoading(true);
+
+      const data = await signUp({
+        name: fullName.trim(),
+        email: email.trim(),
+        password,
+        role: "CORRETOR",
+        creci,
+        phone: phone.replace(/\\D/g, ""),
+      });
+
+      console.log("SIGN UP BROKER SUCCESS:", data);
+
+      Alert.alert(
+        "Conta criada",
+        `Cadastro realizado para ${data.user.name ?? data.user.email}`
+      );
+
+      router.replace("/(tabs)/index" as Href);
+    } catch (error) {
+      console.log("SIGN UP BROKER ERROR:", error);
+
+      Alert.alert(
+        "Erro no cadastro",
+        error instanceof Error ? error.message : "Não foi possível criar a conta."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -231,10 +269,16 @@ export default function RegisterBrokerScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.primaryButton, !isFormValid && styles.primaryButtonDisabled]}
-          disabled={!isFormValid}
+          style={[
+            styles.primaryButton,
+            (!isFormValid || loading) && styles.primaryButtonDisabled,
+          ]}
+          disabled={!isFormValid || loading}
+          onPress={handleRegisterBroker}
         >
-          <Text style={styles.primaryButtonText}>Criar conta de corretor</Text>
+          <Text style={styles.primaryButtonText}>
+            {loading ? "Criando..." : "Criar conta de corretor"}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

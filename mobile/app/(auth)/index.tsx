@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-
 import {
+  Alert,
   View,
   Text,
   TextInput,
@@ -11,25 +11,47 @@ import {
 } from "react-native";
 import { router, type Href } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useAuth, UserRole } from "@/context/AuthContext";
+import { signIn } from "../../services/auth";
 
 export default function LoginScreen() {
-  const { userRole, setUserRole } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin() {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert("Atenção", "Preencha e-mail e senha.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const data = await signIn({
+        email: email.trim(),
+        password,
+      });
+
+      Alert.alert("Sucesso", `Bem-vindo, ${data.user.name ?? data.user.email}`);
+
+      router.replace("/(tabs)" as Href);
+    } catch (error) {
+      Alert.alert(
+        "Erro no login",
+        error instanceof Error ? error.message : "Falha ao entrar."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.container}>
           <View style={styles.logoBox}>
             <MaterialCommunityIcons
-              name="office-building"
+              name="office-building-outline"
               size={32}
               color="#FFFFFF"
             />
@@ -39,29 +61,9 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>Faça login na sua conta</Text>
 
           <View style={styles.form}>
-            <View style={styles.roleContainer}>
-              <TouchableOpacity 
-                style={[styles.roleBtn, userRole === 'buyer' && styles.roleBtnActive]}
-                onPress={() => setUserRole('buyer')}
-              >
-                <Text style={[styles.roleBtnText, userRole === 'buyer' && styles.roleBtnTextActive]}>Comprador</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.roleBtn, userRole === 'broker' && styles.roleBtnActive]}
-                onPress={() => setUserRole('broker')}
-              >
-                <Text style={[styles.roleBtnText, userRole === 'broker' && styles.roleBtnTextActive]}>Corretor</Text>
-              </TouchableOpacity>
-            </View>
-
             <Text style={styles.label}>E-mail</Text>
             <View style={styles.inputWrapper}>
-              <Feather
-                name="mail"
-                size={20}
-                color="#6B7280"
-                style={styles.leftIcon}
-              />
+              <Feather name="mail" size={20} color="#6B7280" style={styles.leftIcon} />
               <TextInput
                 value={email}
                 onChangeText={setEmail}
@@ -75,12 +77,7 @@ export default function LoginScreen() {
 
             <Text style={styles.label}>Senha</Text>
             <View style={styles.inputWrapper}>
-              <Feather
-                name="lock"
-                size={20}
-                color="#6B7280"
-                style={styles.leftIcon}
-              />
+              <Feather name="lock" size={20} color="#6B7280" style={styles.leftIcon} />
               <TextInput
                 value={password}
                 onChangeText={setPassword}
@@ -101,17 +98,18 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              onPress={() => router.push("/forgot-password" as Href)}
-            >
+            <TouchableOpacity onPress={() => router.push("/forgot-password" as Href)}>
               <Text style={styles.forgotText}>Esqueceu sua senha?</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => router.replace("/(tabs)" as Href)}
+              style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
+              onPress={handleLogin}
+              disabled={loading}
             >
-              <Text style={styles.primaryButtonText}>Entrar</Text>
+              <Text style={styles.primaryButtonText}>
+                {loading ? "Entrando..." : "Entrar"}
+              </Text>
             </TouchableOpacity>
 
             <View style={styles.dividerRow}>
@@ -134,14 +132,8 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#F1F5F9",
-  },
-  scroll: {
-    flexGrow: 1,
-    justifyContent: "center",
-  },
+  safe: { flex: 1, backgroundColor: "#F1F5F9" },
+  scroll: { flexGrow: 1, justifyContent: "center" },
   container: {
     width: "100%",
     maxWidth: 430,
@@ -173,33 +165,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 34,
   },
-  form: {
-    width: "100%",
-  },
-  roleContainer: {
-    flexDirection: "row",
-    backgroundColor: "#E2E8F0",
-    borderRadius: 14,
-    padding: 4,
-    marginBottom: 20,
-  },
-  roleBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-    borderRadius: 10,
-  },
-  roleBtnActive: {
-    backgroundColor: "#0A73D9",
-  },
-  roleBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#64748B",
-  },
-  roleBtnTextActive: {
-    color: "#FFFFFF",
-  },
+  form: { width: "100%" },
   label: {
     fontSize: 16,
     color: "#111827",
@@ -216,18 +182,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 14,
   },
-  leftIcon: {
-    marginRight: 10,
-  },
+  leftIcon: { marginRight: 10 },
   input: {
     flex: 1,
     height: "100%",
     color: "#111827",
     fontSize: 16,
   },
-  eyeButton: {
-    paddingLeft: 10,
-  },
+  eyeButton: { paddingLeft: 10 },
   forgotText: {
     color: "#0A73D9",
     fontSize: 15,
@@ -241,6 +203,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  primaryButtonDisabled: { opacity: 0.7 },
   primaryButtonText: {
     color: "#FFFFFF",
     fontSize: 17,
@@ -251,16 +214,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginVertical: 28,
   },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#D1D5DB",
-  },
-  dividerText: {
-    marginHorizontal: 14,
-    fontSize: 14,
-    color: "#6B7280",
-  },
+  divider: { flex: 1, height: 1, backgroundColor: "#D1D5DB" },
+  dividerText: { marginHorizontal: 14, fontSize: 14, color: "#6B7280" },
   secondaryButton: {
     height: 56,
     borderWidth: 1,
