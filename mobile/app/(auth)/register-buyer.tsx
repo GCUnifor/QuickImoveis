@@ -12,6 +12,7 @@ import {
 import { router, type Href } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { signUp } from "../../services/auth";
+import { useAuth } from "../../context/AuthContext";
 
 function isValidEmail(email: string) {
   return /\S+@\S+\.\S+/.test(email.trim());
@@ -28,6 +29,7 @@ function formatCurrencyInput(value: string) {
 }
 
 export default function RegisterBuyerScreen() {
+  const { checkAuth } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -81,12 +83,13 @@ export default function RegisterBuyerScreen() {
 
       console.log("SIGN UP BUYER SUCCESS:", data);
 
+      // Atualiza o estado global de autenticação para acionar o redirecionamento do RootLayout
+      await checkAuth();
+
       Alert.alert(
         "Conta criada",
         `Bem-vindo, ${data.user.name ?? data.user.email}`
       );
-
-      router.replace("/(tabs)/index" as Href);
     } catch (error) {
       console.log("SIGN UP BUYER ERROR:", error);
 

@@ -12,6 +12,7 @@ import {
 import { router, type Href } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { signUp } from "../../services/auth";
+import { useAuth } from "../../context/AuthContext";
 
 function isValidEmail(email: string) {
   return /\S+@\S+\.\S+/.test(email.trim());
@@ -41,7 +42,9 @@ function isValidCreci(value: string) {
 }
 
 export default function RegisterBrokerScreen() {
+  const { checkAuth } = useAuth();
   const [fullName, setFullName] = useState("");
+  // ... (rest of the state)
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [creci, setCreci] = useState("");
@@ -108,12 +111,13 @@ export default function RegisterBrokerScreen() {
 
       console.log("SIGN UP BROKER SUCCESS:", data);
 
+      // Atualiza o estado global de autenticação para acionar o redirecionamento do RootLayout
+      await checkAuth();
+
       Alert.alert(
         "Conta criada",
         `Cadastro realizado para ${data.user.name ?? data.user.email}`
       );
-
-      router.replace("/(tabs)/index" as Href);
     } catch (error) {
       console.log("SIGN UP BROKER ERROR:", error);
 

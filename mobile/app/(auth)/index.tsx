@@ -12,8 +12,10 @@ import {
 import { router, type Href } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { signIn } from "../../services/auth";
+import { useAuth } from "../../context/AuthContext";
 
 export default function LoginScreen() {
+  const { checkAuth } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -27,18 +29,30 @@ export default function LoginScreen() {
 
     try {
       setLoading(true);
+      console.log("Tentando login para:", email.trim());
       const data = await signIn({
         email: email.trim(),
         password,
       });
 
-      Alert.alert("Sucesso", `Bem-vindo, ${data.user.name ?? data.user.email}`);
+      // Atualiza o estado global de autenticação
+      await checkAuth();
 
-      router.replace("/(tabs)" as Href);
-    } catch (error) {
+      Alert.alert("Sucesso", `Bem-vindo, ${data.user.name ?? data.user.email}`);
+    } catch (error: any) {
+      console.error("ERRO BRUTO CAPTURADO:", error);
+      if (error.response) {
+        console.error("DADOS DA RESPOSTA DO SERVIDOR:", error.response.data);
+        console.error("STATUS DA RESPOSTA:", error.response.status);
+      } else if (error.request) {
+        console.error("NENHUMA RESPOSTA RECEBIDA DO SERVIDOR (Provável Timeout ou Rede)");
+      } else {
+        console.error("ERRO AO MONTAR REQUISIÇÃO:", error.message);
+      }
+
       Alert.alert(
         "Erro no login",
-        error instanceof Error ? error.message : "Falha ao entrar."
+        error.message || "Falha ao entrar."
       );
     } finally {
       setLoading(false);

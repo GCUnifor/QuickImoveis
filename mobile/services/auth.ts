@@ -10,10 +10,9 @@ import type {
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
-    const data = error.response?.data as { message?: string } | undefined;
-    return data?.message || error.message || fallback;
+    return error.response?.data?.message || error.message || fallback;
   }
-  return fallback;
+  return error instanceof Error ? error.message : fallback;
 }
 
 export async function signIn(payload: SignInPayload) {
