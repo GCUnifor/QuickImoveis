@@ -38,7 +38,7 @@ function formatCreci(value: string) {
 }
 
 function isValidCreci(value: string) {
-  return /^\\d{6}-[A-Z]{2}$/.test(value);
+  return /^\d{6}-[A-Z]{2}$/.test(value);
 }
 
 export default function RegisterBrokerScreen() {
@@ -64,7 +64,7 @@ export default function RegisterBrokerScreen() {
       : "";
 
   const phoneError =
-    phone.length > 0 && phone.replace(/\\D/g, "").length < 11
+    phone.length > 0 && phone.replace(/\D/g, "").length < 11
       ? "Digite um telefone válido com DDD."
       : "";
 
@@ -87,7 +87,7 @@ export default function RegisterBrokerScreen() {
     return (
       fullName.trim().length >= 3 &&
       isValidEmail(email) &&
-      phone.replace(/\\D/g, "").length === 11 &&
+      phone.replace(/\D/g, "").length === 11 &&
       isValidCreci(creci) &&
       password.length >= 6 &&
       confirmPassword === password
@@ -106,7 +106,7 @@ export default function RegisterBrokerScreen() {
         password,
         role: "CORRETOR",
         creci,
-        phone: phone.replace(/\\D/g, ""),
+        phone: phone.replace(/\D/g, ""),
       });
 
       console.log("SIGN UP BROKER SUCCESS:", data);

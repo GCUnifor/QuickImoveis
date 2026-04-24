@@ -10,6 +10,22 @@ const { width } = Dimensions.get('window');
 export default function SearchScreen() {
   const router = useRouter();
   const { properties, toggleFavorite, isFavorite } = useProperties();
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [selectedType, setSelectedType] = React.useState('Todos');
+
+  const filteredProperties = properties.filter(item => {
+    const matchesSearch = 
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesType = 
+      selectedType === 'Todos' || 
+      (selectedType === 'Comprar' && item.type === 'Venda') ||
+      (selectedType === 'Alugar' && item.type === 'Aluguel');
+
+    return matchesSearch && matchesType;
+  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -18,9 +34,11 @@ export default function SearchScreen() {
           <View style={styles.searchBar}>
             <Feather name="search" size={20} color="#64748B" />
             <TextInput 
-              placeholder="Buscar por cidade ou bairro..." 
+              placeholder="Buscar por cidade, bairro ou tipo..." 
               style={styles.searchInput}
               placeholderTextColor="#94A3B8"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
             />
           </View>
           <TouchableOpacity style={styles.filterBtn}>
@@ -29,21 +47,22 @@ export default function SearchScreen() {
         </View>
 
         <View style={styles.chipRow}>
-          {['Todos', 'Comprar', 'Alugar'].map((chip, index) => (
+          {['Todos', 'Comprar', 'Alugar'].map((chip) => (
             <TouchableOpacity 
-              key={index} 
-              style={[styles.chip, index === 0 && styles.activeChip]}
+              key={chip} 
+              style={[styles.chip, selectedType === chip && styles.activeChip]}
+              onPress={() => setSelectedType(chip)}
             >
-              <Text style={[styles.chipText, index === 0 && styles.activeChipText]}>{chip}</Text>
+              <Text style={[styles.chipText, selectedType === chip && styles.activeChipText]}>{chip}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.listContent}>
-        <Text style={styles.resultsText}>{properties.length} imóveis encontrados</Text>
+        <Text style={styles.resultsText}>{filteredProperties.length} imóveis encontrados</Text>
         
-        {properties.map((item) => (
+        {filteredProperties.map((item) => (
           <TouchableOpacity 
             key={item.id} 
             style={styles.card}

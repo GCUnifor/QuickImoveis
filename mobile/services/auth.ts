@@ -59,3 +59,12 @@ export async function logout() {
     await clearSession();
   }
 }
+
+export async function requestEmailVerification() {
+  try {
+    const { data } = await api.post<{ message: string }>("/auth/request-email-verification");
+    return data;
+  } catch (error) {
+    throw new Error(getErrorMessage(error, "Não foi possível enviar o e-mail de verificação."));
+  }
+}

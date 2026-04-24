@@ -3,11 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   SafeAreaView,
   TouchableOpacity,
   TextInput,
   Dimensions,
+  Platform,
 } from "react-native";
 import { Image } from "expo-image";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -25,121 +26,135 @@ export default function HomeScreen() {
     ? properties 
     : properties.filter(p => p.category === selectedFilter);
 
+  const renderHeader = () => (
+    <>
+      {/* Header Section */}
+      <View style={styles.blueHeader}>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.greetingText}>Olá, Diego</Text>
+            <Text style={styles.welcomeText}>Encontre seu imóvel</Text>
+          </View>
+          <TouchableOpacity style={styles.profileIconBtn}>
+            <MaterialCommunityIcons name="office-building" size={24} color="#0A73D9" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Feather name="search" size={20} color="#6B7280" />
+            <TextInput
+              placeholder="Buscar por cidade ou bairro..."
+              placeholderTextColor="#94A3B8"
+              style={styles.searchInput}
+            />
+            <TouchableOpacity style={styles.searchButton}>
+              <Text style={styles.searchButtonText}>Buscar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Filters Section */}
+      <View style={styles.whiteBackground}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={["Todos", "Apartamento", "Casa"]}
+          keyExtractor={(item) => item}
+          contentContainerStyle={styles.filterScroll}
+          renderItem={({ item: filter }) => (
+            <TouchableOpacity
+              style={[
+                styles.filterChip,
+                selectedFilter === filter && styles.activeFilterChip,
+              ]}
+              onPress={() => setSelectedFilter(filter)}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  selectedFilter === filter && styles.activeFilterText,
+                ]}
+              >
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+
+        {/* Featured Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Destaques para você</Text>
+          <TouchableOpacity>
+            <Text style={styles.seeAllText}>Ver todos</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </>
+  );
+
+  const renderProperty = ({ item: property }: { item: any }) => (
+    <View style={{ paddingHorizontal: 20 }}>
+      <TouchableOpacity
+        style={styles.propertyCardVertical}
+        onPress={() => router.push(`/details/${property.id}`)}
+      >
+        <View style={styles.cardImageContainer}>
+          <Image
+            source={property.image}
+            style={styles.propertyImage}
+            contentFit="cover"
+          />
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>Venda</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.favoriteBtn}
+            onPress={(e) => {
+              e.stopPropagation();
+              toggleFavorite(property.id);
+            }}
+          >
+            <Feather 
+              name="heart" 
+              size={20} 
+              color={isFavorite(property.id) ? "#EF4444" : "#111827"} 
+              fill={isFavorite(property.id) ? "#EF4444" : "transparent"}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.cardInfo}>
+          <Text style={styles.priceText}>{property.price}</Text>
+          <Text style={styles.propertyTitle} numberOfLines={1}>
+            {property.title}
+          </Text>
+          <View style={styles.locationRow}>
+            <Feather name="map-pin" size={14} color="#6B7280" />
+            <Text style={styles.locationText}>{property.location}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[1]}>
-        {/* Header Section */}
-        <View style={styles.blueHeader}>
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.greetingText}>Olá, Diego</Text>
-              <Text style={styles.welcomeText}>Encontre seu imóvel</Text>
-            </View>
-            <TouchableOpacity style={styles.profileIconBtn}>
-              <MaterialCommunityIcons name="office-building" size={24} color="#0A73D9" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
-              <Feather name="search" size={20} color="#6B7280" />
-              <TextInput
-                placeholder="Buscar por cidade ou bairro..."
-                placeholderTextColor="#94A3B8"
-                style={styles.searchInput}
-              />
-              <TouchableOpacity style={styles.searchButton}>
-                <Text style={styles.searchButtonText}>Buscar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Filters Section */}
-        <View style={styles.whiteBackground}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterScroll}
-          >
-            {["Todos", "Apartamento", "Casa"].map((filter) => (
-              <TouchableOpacity
-                key={filter}
-                style={[
-                  styles.filterChip,
-                  selectedFilter === filter && styles.activeFilterChip,
-                ]}
-                onPress={() => setSelectedFilter(filter)}
-              >
-                <Text
-                  style={[
-                    styles.filterText,
-                    selectedFilter === filter && styles.activeFilterText,
-                  ]}
-                >
-                  {filter}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Featured Section */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Destaques para você</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>Ver todos</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.verticalFeed}>
-            {filteredProperties.map((property) => (
-              <TouchableOpacity
-                key={property.id}
-                style={styles.propertyCardVertical}
-                onPress={() => router.push(`/details/${property.id}`)}
-              >
-                <View style={styles.cardImageContainer}>
-                  <Image
-                    source={property.image}
-                    style={styles.propertyImage}
-                    contentFit="cover"
-                  />
-                  <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>Venda</Text>
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.favoriteBtn}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(property.id);
-                    }}
-                  >
-                    <Feather 
-                      name="heart" 
-                      size={20} 
-                      color={isFavorite(property.id) ? "#EF4444" : "#111827"} 
-                      fill={isFavorite(property.id) ? "#EF4444" : "transparent"}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.cardInfo}>
-                  <Text style={styles.priceText}>{property.price}</Text>
-                  <Text style={styles.propertyTitle} numberOfLines={1}>
-                    {property.title}
-                  </Text>
-                  <View style={styles.locationRow}>
-                    <Feather name="map-pin" size={14} color="#6B7280" />
-                    <Text style={styles.locationText}>{property.location}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      <FlatList
+        data={filteredProperties}
+        renderItem={renderProperty}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={renderHeader}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.flatListContent}
+        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={10}
+        ListFooterComponent={<View style={{ height: 100 }} />}
+      />
     </SafeAreaView>
   );
 }
@@ -302,6 +317,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 3,
+    alignSelf: 'center',
   },
   cardImageContainer: {
     height: 220,
@@ -358,5 +374,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#64748B",
     marginLeft: 5,
+  },
+  flatListContent: {
+    backgroundColor: "#F8FAFC",
+    paddingBottom: 20,
   },
 });
