@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import { 
   View, 
   Text, 
@@ -153,6 +154,33 @@ export default function CreatePropertyScreen() {
     }));
   };
 
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão negada', 'Desculpe, precisamos de permissão para acessar a galeria de fotos.');
+      return;
+    }
+
+    if (formData.photos.length >= 5) {
+      Alert.alert('Limite atingido', 'Você já adicionou o limite máximo de 5 fotos.');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        photos: [...prev.photos, result.assets[0].uri].slice(0, 5)
+      }));
+    }
+  };
+
   const renderStep1 = () => (
     <ScrollView style={styles.stepContainer} showsVerticalScrollIndicator={false}>
       <Text style={styles.sectionTitle}>Informações Básicas</Text>
@@ -299,7 +327,7 @@ export default function CreatePropertyScreen() {
           </View>
         ))}
         {formData.photos.length < 5 && (
-          <TouchableOpacity style={styles.addPhotoBtn}>
+          <TouchableOpacity style={styles.addPhotoBtn} onPress={pickImage}>
             <MaterialCommunityIcons name="camera-outline" size={32} color="#CBD5E1" />
             <Text style={styles.addPhotoText}>Adicionar</Text>
           </TouchableOpacity>

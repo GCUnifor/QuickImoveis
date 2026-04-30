@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, ScrollView, Dimensions, Modal } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -12,6 +12,10 @@ export default function SearchScreen() {
   const { properties, toggleFavorite, isFavorite } = useProperties();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedType, setSelectedType] = React.useState('Todos');
+  const [isFilterModalVisible, setIsFilterModalVisible] = React.useState(false);
+  const [selectedCategory, setSelectedCategory] = React.useState('Todas');
+  const [selectedBedrooms, setSelectedBedrooms] = React.useState('Qualquer');
+  const [selectedBathrooms, setSelectedBathrooms] = React.useState('Qualquer');
 
   const filteredProperties = properties.filter(item => {
     const matchesSearch = 
@@ -24,7 +28,23 @@ export default function SearchScreen() {
       (selectedType === 'Comprar' && item.type === 'Venda') ||
       (selectedType === 'Alugar' && item.type === 'Aluguel');
 
-    return matchesSearch && matchesType;
+    const matchesCategory = selectedCategory === 'Todas' || item.category === selectedCategory;
+    
+    const itemBeds = parseInt(item.bedrooms || '2');
+    let matchesBeds = true;
+    if (selectedBedrooms !== 'Qualquer') {
+      if (selectedBedrooms === '4+') matchesBeds = itemBeds >= 4;
+      else matchesBeds = itemBeds === parseInt(selectedBedrooms);
+    }
+
+    const itemBaths = parseInt(item.bathrooms || '2');
+    let matchesBaths = true;
+    if (selectedBathrooms !== 'Qualquer') {
+      if (selectedBathrooms === '4+') matchesBaths = itemBaths >= 4;
+      else matchesBaths = itemBaths === parseInt(selectedBathrooms);
+    }
+
+    return matchesSearch && matchesType && matchesCategory && matchesBeds && matchesBaths;
   });
 
   return (
@@ -41,7 +61,7 @@ export default function SearchScreen() {
               onChangeText={setSearchQuery}
             />
           </View>
-          <TouchableOpacity style={styles.filterBtn}>
+          <TouchableOpacity style={styles.filterBtn} onPress={() => setIsFilterModalVisible(true)}>
             <MaterialCommunityIcons name="filter-variant" size={24} color="#1E293B" />
           </TouchableOpacity>
         </View>
@@ -117,6 +137,84 @@ export default function SearchScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      <Modal
+        visible={isFilterModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsFilterModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filtros Avançados</Text>
+              <TouchableOpacity onPress={() => setIsFilterModalVisible(false)}>
+                <Feather name="x" size={24} color="#1E293B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.filterSectionTitle}>Categoria</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+                {['Todas', 'Casa', 'Apartamento', 'Terreno', 'Comercial'].map(cat => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.filterOptionBtn, selectedCategory === cat && styles.filterOptionBtnActive]}
+                    onPress={() => setSelectedCategory(cat)}
+                  >
+                    <Text style={[styles.filterOptionText, selectedCategory === cat && styles.filterOptionTextActive]}>{cat}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <Text style={styles.filterSectionTitle}>Quartos</Text>
+              <View style={styles.filterRow}>
+                {['Qualquer', '1', '2', '3', '4+'].map(num => (
+                  <TouchableOpacity
+                    key={num}
+                    style={[styles.filterOptionBtn, selectedBedrooms === num && styles.filterOptionBtnActive]}
+                    onPress={() => setSelectedBedrooms(num)}
+                  >
+                    <Text style={[styles.filterOptionText, selectedBedrooms === num && styles.filterOptionTextActive]}>{num}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.filterSectionTitle}>Banheiros</Text>
+              <View style={styles.filterRow}>
+                {['Qualquer', '1', '2', '3', '4+'].map(num => (
+                  <TouchableOpacity
+                    key={num}
+                    style={[styles.filterOptionBtn, selectedBathrooms === num && styles.filterOptionBtnActive]}
+                    onPress={() => setSelectedBathrooms(num)}
+                  >
+                    <Text style={[styles.filterOptionText, selectedBathrooms === num && styles.filterOptionTextActive]}>{num}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={styles.clearFilterBtn}
+                onPress={() => {
+                  setSelectedCategory('Todas');
+                  setSelectedBedrooms('Qualquer');
+                  setSelectedBathrooms('Qualquer');
+                }}
+              >
+                <Text style={styles.clearFilterText}>Limpar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.applyFilterBtn}
+                onPress={() => setIsFilterModalVisible(false)}
+              >
+                <Text style={styles.applyFilterText}>Aplicar Filtros</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -280,5 +378,95 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     marginLeft: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 12,
+    marginTop: 16,
+  },
+  filterScroll: {
+    marginBottom: 8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 8,
+  },
+  filterOptionBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: 'transparent',
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  filterOptionBtnActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
+  },
+  filterOptionText: {
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  filterOptionTextActive: {
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    marginTop: 24,
+    gap: 16,
+  },
+  clearFilterBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  clearFilterText: {
+    color: '#64748B',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  applyFilterBtn: {
+    flex: 2,
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: '#0A73D9',
+    alignItems: 'center',
+  },
+  applyFilterText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

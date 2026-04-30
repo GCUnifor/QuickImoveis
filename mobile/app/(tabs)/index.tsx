@@ -35,9 +35,6 @@ export default function HomeScreen() {
             <Text style={styles.greetingText}>Olá, Diego</Text>
             <Text style={styles.welcomeText}>Encontre seu imóvel</Text>
           </View>
-          <TouchableOpacity style={styles.profileIconBtn}>
-            <MaterialCommunityIcons name="office-building" size={24} color="#0A73D9" />
-          </TouchableOpacity>
         </View>
 
         {/* Search Bar */}
