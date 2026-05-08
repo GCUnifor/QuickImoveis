@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { router, type Href } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -61,86 +62,88 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.container}>
-          <View style={styles.logoBox}>
-            <MaterialCommunityIcons
-              name="office-building-outline"
-              size={32}
-              color="#FFFFFF"
-            />
-          </View>
-
-          <Text style={styles.title}>Quick Imóveis</Text>
-          <Text style={styles.subtitle}>Faça login na sua conta</Text>
-
-          <View style={styles.form}>
-            <Text style={styles.label}>E-mail</Text>
-            <View style={styles.inputWrapper}>
-              <Feather name="mail" size={20} color="#6B7280" style={styles.leftIcon} />
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="seu@email.com"
-                placeholderTextColor="#6B7280"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={styles.input}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <View style={styles.container}>
+            <View style={styles.logoBox}>
+              <MaterialCommunityIcons
+                name="office-building-outline"
+                size={32}
+                color="#FFFFFF"
               />
             </View>
 
-            <Text style={styles.label}>Senha</Text>
-            <View style={styles.inputWrapper}>
-              <Feather name="lock" size={20} color="#6B7280" style={styles.leftIcon} />
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Sua senha"
-                placeholderTextColor="#6B7280"
-                secureTextEntry={!showPassword}
-                style={styles.input}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeButton}
-              >
-                <Feather
-                  name={showPassword ? "eye-off" : "eye"}
-                  size={20}
-                  color="#6B7280"
+            <Text style={styles.title}>Quick Imóveis</Text>
+            <Text style={styles.subtitle}>Faça login na sua conta</Text>
+
+            <View style={styles.form}>
+              <Text style={styles.label}>E-mail</Text>
+              <View style={styles.inputWrapper}>
+                <Feather name="mail" size={20} color="#6B7280" style={styles.leftIcon} />
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="seu@email.com"
+                  placeholderTextColor="#6B7280"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={styles.input}
                 />
+              </View>
+
+              <Text style={styles.label}>Senha</Text>
+              <View style={styles.inputWrapper}>
+                <Feather name="lock" size={20} color="#6B7280" style={styles.leftIcon} />
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Sua senha"
+                  placeholderTextColor="#6B7280"
+                  secureTextEntry={!showPassword}
+                  style={styles.input}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeButton}
+                >
+                  <Feather
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color="#6B7280"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity onPress={() => router.push("/forgot-password" as Href)}>
+                <Text style={styles.forgotText}>Esqueceu sua senha?</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {loading ? "Entrando..." : "Entrar"}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.dividerRow}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerText}>ou</Text>
+                <View style={styles.divider} />
+              </View>
+
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => router.push("/register-type" as Href)}
+              >
+                <Text style={styles.secondaryButtonText}>Criar uma conta</Text>
               </TouchableOpacity>
             </View>
-
-            <TouchableOpacity onPress={() => router.push("/forgot-password" as Href)}>
-              <Text style={styles.forgotText}>Esqueceu sua senha?</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              <Text style={styles.primaryButtonText}>
-                {loading ? "Entrando..." : "Entrar"}
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.dividerRow}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>ou</Text>
-              <View style={styles.divider} />
-            </View>
-
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => router.push("/register-type" as Href)}
-            >
-              <Text style={styles.secondaryButtonText}>Criar uma conta</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }

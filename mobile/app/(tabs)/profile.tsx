@@ -9,9 +9,7 @@ export default function ProfileScreen() {
   const { logout, userRole, user } = useAuth();
 
   const baseMenuItems = [
-    { icon: 'bell', label: 'Notificações', iconLib: 'Feather' },
     { icon: 'settings', label: 'Configurações', iconLib: 'Feather' },
-    { icon: 'help-circle', label: 'Ajuda e suporte', iconLib: 'Feather' },
     { icon: 'file-text', label: 'Termos e condições', iconLib: 'Feather' },
   ];
 

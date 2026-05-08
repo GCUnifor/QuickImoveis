@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   TextInput,
   Dimensions,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { Image } from "expo-image";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -17,80 +19,92 @@ import { useProperties } from "@/context/PropertyContext";
 
 const { width } = Dimensions.get("window");
 
+const HomeHeader = React.memo(({ 
+  searchQuery, 
+  setSearchQuery, 
+  selectedFilter, 
+  setSelectedFilter 
+}: {
+  searchQuery: string;
+  setSearchQuery: (t: string) => void;
+  selectedFilter: string;
+  setSelectedFilter: (t: string) => void;
+}) => (
+  <>
+    {/* Header Section */}
+    <View style={styles.blueHeader}>
+      <View style={styles.headerTop}>
+        <View>
+          <Text style={styles.greetingText}>Olá, Diego</Text>
+          <Text style={styles.welcomeText}>Encontre seu imóvel</Text>
+        </View>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Feather name="search" size={20} color="#6B7280" />
+          <TextInput
+            placeholder="Buscar por cidade ou bairro..."
+            placeholderTextColor="#94A3B8"
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+      </View>
+    </View>
+
+    {/* Filters Section */}
+    <View style={styles.whiteBackground}>
+      <FlatList
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        data={["Todos", "Apartamento", "Casa"]}
+        keyExtractor={(item) => item}
+        contentContainerStyle={styles.filterScroll}
+        renderItem={({ item: filter }) => (
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              selectedFilter === filter && styles.activeFilterChip,
+            ]}
+            onPress={() => setSelectedFilter(filter)}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                selectedFilter === filter && styles.activeFilterText,
+              ]}
+            >
+              {filter}
+            </Text>
+          </TouchableOpacity>
+        )}
+      />
+
+      {/* Featured Section */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Destaques para você</Text>
+      </View>
+    </View>
+  </>
+));
+
 export default function HomeScreen() {
   const router = useRouter();
   const { properties, toggleFavorite, isFavorite } = useProperties();
   const [selectedFilter, setSelectedFilter] = React.useState("Todos");
+  const [searchQuery, setSearchQuery] = React.useState("");
 
-  const filteredProperties = selectedFilter === "Todos" 
-    ? properties 
-    : properties.filter(p => p.category === selectedFilter);
-
-  const renderHeader = () => (
-    <>
-      {/* Header Section */}
-      <View style={styles.blueHeader}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.greetingText}>Olá, Diego</Text>
-            <Text style={styles.welcomeText}>Encontre seu imóvel</Text>
-          </View>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Feather name="search" size={20} color="#6B7280" />
-            <TextInput
-              placeholder="Buscar por cidade ou bairro..."
-              placeholderTextColor="#94A3B8"
-              style={styles.searchInput}
-            />
-            <TouchableOpacity style={styles.searchButton}>
-              <Text style={styles.searchButtonText}>Buscar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      {/* Filters Section */}
-      <View style={styles.whiteBackground}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={["Todos", "Apartamento", "Casa"]}
-          keyExtractor={(item) => item}
-          contentContainerStyle={styles.filterScroll}
-          renderItem={({ item: filter }) => (
-            <TouchableOpacity
-              style={[
-                styles.filterChip,
-                selectedFilter === filter && styles.activeFilterChip,
-              ]}
-              onPress={() => setSelectedFilter(filter)}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  selectedFilter === filter && styles.activeFilterText,
-                ]}
-              >
-                {filter}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-
-        {/* Featured Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Destaques para você</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>Ver todos</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </>
-  );
+  const filteredProperties = properties.filter((p) => {
+    const matchesCategory =
+      selectedFilter === "Todos" || p.category === selectedFilter;
+    const matchesSearch =
+      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.location.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   const renderProperty = ({ item: property }: { item: any }) => (
     <View style={{ paddingHorizontal: 20 }}>
@@ -138,21 +152,30 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <FlatList
-        data={filteredProperties}
-        renderItem={renderProperty}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={renderHeader}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.flatListContent}
-        removeClippedSubviews={Platform.OS === 'android'}
-        initialNumToRender={5}
-        maxToRenderPerBatch={5}
-        windowSize={10}
-        ListFooterComponent={<View style={{ height: 100 }} />}
-      />
-    </SafeAreaView>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <SafeAreaView style={styles.safe}>
+        <FlatList
+          data={filteredProperties}
+          renderItem={renderProperty}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            <HomeHeader 
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              selectedFilter={selectedFilter}
+              setSelectedFilter={setSelectedFilter}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.flatListContent}
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={10}
+          ListFooterComponent={<View style={{ height: 100 }} />}
+        />
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -209,17 +232,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 16,
     color: "#111827",
-  },
-  searchButton: {
-    backgroundColor: "#0A73D9",
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  searchButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 14,
   },
   whiteBackground: {
     backgroundColor: "#F8FAFC",
@@ -314,7 +326,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 3,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   cardImageContainer: {
     height: 220,

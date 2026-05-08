@@ -12,7 +12,9 @@ import {
   Platform,
   Dimensions,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  TouchableWithoutFeedback,
+  Keyboard
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -252,7 +254,7 @@ export default function CreatePropertyScreen() {
   );
 
   const renderStep2 = () => (
-    <View style={styles.stepContainer}>
+    <ScrollView style={styles.stepContainer} showsVerticalScrollIndicator={false}>
       <Text style={styles.sectionTitle}>Localização</Text>
       
       <Text style={styles.label}>Endereço (Rua) *</Text>
@@ -301,11 +303,12 @@ export default function CreatePropertyScreen() {
         value={formData.state}
         onChangeText={t => setFormData({...formData, state: t})}
       />
-    </View>
+      <View style={{ height: 20 }} />
+    </ScrollView>
   );
 
   const renderStep3 = () => (
-    <View style={styles.stepContainer}>
+    <ScrollView style={styles.stepContainer} showsVerticalScrollIndicator={false}>
       <Text style={styles.sectionTitle}>Fotos do Imóvel</Text>
       <Text style={styles.subtitle}>Adicione até 5 fotos do imóvel</Text>
 
@@ -337,11 +340,12 @@ export default function CreatePropertyScreen() {
       <TouchableOpacity onPress={addExamplePhotos} style={styles.exampleBtn}>
         <Text style={styles.exampleBtnText}>Toque para adicionar fotos de exemplo</Text>
       </TouchableOpacity>
-    </View>
+      <View style={{ height: 20 }} />
+    </ScrollView>
   );
 
   const renderStep4 = () => (
-    <ScrollView style={styles.stepContainer}>
+    <ScrollView style={styles.stepContainer} showsVerticalScrollIndicator={false}>
       <Text style={styles.sectionTitle}>Descrição e Características</Text>
       
       <Text style={styles.label}>Descrição do Imóvel</Text>
@@ -353,62 +357,65 @@ export default function CreatePropertyScreen() {
         value={formData.description}
         onChangeText={t => setFormData({...formData, description: t})}
       />
+      <View style={{ height: 20 }} />
     </ScrollView>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => step > 1 ? setStep(s => s - 1) : router.replace('/(tabs)')}>
-            <Feather name="arrow-left" size={24} color="#000" />
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.headerTitle}>Cadastrar Imóvel</Text>
-            <Text style={styles.headerStep}>Passo {step} de 4</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => step > 1 ? setStep(s => s - 1) : router.replace('/(tabs)')}>
+              <Feather name="arrow-left" size={24} color="#000" />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.headerTitle}>Cadastrar Imóvel</Text>
+              <Text style={styles.headerStep}>Passo {step} de 4</Text>
+            </View>
+            <View style={{ width: 24 }} />
           </View>
-          <View style={{ width: 24 }} />
-        </View>
 
-        <View style={styles.progressRow}>
-          {[1, 2, 3, 4].map(s => (
-            <View 
-              key={s} 
-              style={[
-                styles.progressSegment, 
-                s <= step && styles.progressSegmentActive
-              ]} 
-            />
-          ))}
-        </View>
+          <View style={styles.progressRow}>
+            {[1, 2, 3, 4].map(s => (
+              <View 
+                key={s} 
+                style={[
+                  styles.progressSegment, 
+                  s <= step && styles.progressSegmentActive
+                ]} 
+              />
+            ))}
+          </View>
 
-        <View style={styles.content}>
-          {step === 1 && renderStep1()}
-          {step === 2 && renderStep2()}
-          {step === 3 && renderStep3()}
-          {step === 4 && renderStep4()}
-        </View>
+          <View style={styles.content}>
+            {step === 1 && renderStep1()}
+            {step === 2 && renderStep2()}
+            {step === 3 && renderStep3()}
+            {step === 4 && renderStep4()}
+          </View>
 
-        <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[styles.mainBtn, loading && { opacity: 0.7 }]} 
-            onPress={() => step < 4 ? setStep(s => s + 1) : handlePublish()}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.mainBtnText}>
-                {step === 4 ? 'Publicar Imóvel' : 'Continuar'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <View style={styles.footer}>
+            <TouchableOpacity 
+              style={[styles.mainBtn, loading && { opacity: 0.7 }]} 
+              onPress={() => step < 4 ? setStep(s => s + 1) : handlePublish()}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.mainBtnText}>
+                  {step === 4 ? 'Publicar Imóvel' : 'Continuar'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 

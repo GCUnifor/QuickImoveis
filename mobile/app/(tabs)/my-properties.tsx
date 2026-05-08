@@ -41,7 +41,7 @@ export default function MyPropertiesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/profile')} style={styles.backBtn}>
           <Feather name="arrow-left" size={24} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Meus Imóveis</Text>
