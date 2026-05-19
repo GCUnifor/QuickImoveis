@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,11 +11,14 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Image } from "expo-image";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useProperties } from "@/context/PropertyContext";
+import { getListings, PropertyListing } from "@/services/listings";
 
 const { width } = Dimensions.get("window");
 
@@ -45,7 +48,7 @@ const HomeHeader = React.memo(({
         <View style={styles.searchBar}>
           <Feather name="search" size={20} color="#6B7280" />
           <TextInput
-            placeholder="Buscar por cidade ou bairro..."
+            placeholder="Buscar por cidade..."
             placeholderTextColor="#94A3B8"
             style={styles.searchInput}
             value={searchQuery}
@@ -60,7 +63,7 @@ const HomeHeader = React.memo(({
       <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
-        data={["Todos", "Apartamento", "Casa"]}
+        data={["Todos", "Apartamento", "Casa", "Terreno", "Comercial"]}
         keyExtractor={(item) => item}
         contentContainerStyle={styles.filterScroll}
         renderItem={({ item: filter }) => (
@@ -93,63 +96,118 @@ const HomeHeader = React.memo(({
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { properties, toggleFavorite, isFavorite } = useProperties();
-  const [selectedFilter, setSelectedFilter] = React.useState("Todos");
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const { toggleFavorite, isFavorite } = useProperties();
+  const [selectedFilter, setSelectedFilter] = useState("Todos");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [listings, setListings] = useState<PropertyListing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filteredProperties = properties.filter((p) => {
-    const matchesCategory =
-      selectedFilter === "Todos" || p.category === selectedFilter;
-    const matchesSearch =
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.location.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const fetchListings = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    try {
+      const response = await getListings({
+        city: searchQuery || undefined,
+        // We could also filter by property_type here if the API supported it directly
+        // For now, we'll do client-side filtering or just show all
+      });
+      setListings(response.data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [searchQuery]);
 
-  const renderProperty = ({ item: property }: { item: any }) => (
-    <View style={{ paddingHorizontal: 20 }}>
-      <TouchableOpacity
-        style={styles.propertyCardVertical}
-        onPress={() => router.push(`/details/${property.id}`)}
-      >
-        <View style={styles.cardImageContainer}>
-          <Image
-            source={property.image}
-            style={styles.propertyImage}
-            contentFit="cover"
-          />
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>Venda</Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.favoriteBtn}
-            onPress={(e) => {
-              e.stopPropagation();
-              toggleFavorite(property.id);
-            }}
-          >
-            <Feather 
-              name="heart" 
-              size={20} 
-              color={isFavorite(property.id) ? "#EF4444" : "#111827"} 
-              fill={isFavorite(property.id) ? "#EF4444" : "transparent"}
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      fetchListings();
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [fetchListings]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchListings(true);
+  }, [fetchListings]);
+
+  const filteredProperties = useMemo(() => {
+    return listings.filter((p) => {
+      const typeMap: Record<string, string> = {
+        'Apartamento': 'APARTAMENTO',
+        'Casa': 'CASA',
+        'Terreno': 'TERRENO',
+        'Comercial': 'COMERCIAL'
+      };
+      
+      const matchesCategory =
+        selectedFilter === "Todos" || p.property_type === typeMap[selectedFilter];
+      
+      return matchesCategory;
+    });
+  }, [listings, selectedFilter]);
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(price);
+  };
+
+  const renderProperty = ({ item: property }: { item: PropertyListing }) => {
+    const mainImage = property.images && property.images.length > 0 
+      ? property.images[0].image_url 
+      : "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1000&auto=format&fit=crop";
+
+    return (
+      <View style={{ paddingHorizontal: 20 }}>
+        <TouchableOpacity
+          style={styles.propertyCardVertical}
+          onPress={() => router.push(`/details/${property.id}`)}
+        >
+          <View style={styles.cardImageContainer}>
+            <Image
+              source={mainImage}
+              style={styles.propertyImage}
+              contentFit="cover"
             />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.cardInfo}>
-          <Text style={styles.priceText}>{property.price}</Text>
-          <Text style={styles.propertyTitle} numberOfLines={1}>
-            {property.title}
-          </Text>
-          <View style={styles.locationRow}>
-            <Feather name="map-pin" size={14} color="#6B7280" />
-            <Text style={styles.locationText}>{property.location}</Text>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusText}>Venda</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.favoriteBtn}
+              onPress={(e) => {
+                e.stopPropagation();
+                toggleFavorite(property.id);
+              }}
+            >
+              <Feather 
+                name="heart" 
+                size={20} 
+                color={isFavorite(property.id) ? "#EF4444" : "#111827"} 
+                fill={isFavorite(property.id) ? "#EF4444" : "transparent"}
+              />
+            </TouchableOpacity>
           </View>
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
+
+          <View style={styles.cardInfo}>
+            <Text style={styles.priceText}>{formatPrice(property.price)}</Text>
+            <Text style={styles.propertyTitle} numberOfLines={1}>
+              {property.title}
+            </Text>
+            <View style={styles.locationRow}>
+              <Feather name="map-pin" size={14} color="#6B7280" />
+              <Text style={styles.locationText}>
+                {`${property.address.neighborhood}, ${property.address.city} - ${property.address.state}`}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -159,12 +217,28 @@ export default function HomeScreen() {
           renderItem={renderProperty}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
-            <HomeHeader 
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              selectedFilter={selectedFilter}
-              setSelectedFilter={setSelectedFilter}
-            />
+            <>
+              <HomeHeader 
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                selectedFilter={selectedFilter}
+                setSelectedFilter={setSelectedFilter}
+              />
+              {loading && !refreshing && (
+                <View style={{ padding: 20 }}>
+                  <ActivityIndicator size="large" color="#0A73D9" />
+                </View>
+              )}
+              {!loading && filteredProperties.length === 0 && (
+                <View style={{ padding: 40, alignItems: 'center' }}>
+                  <Feather name="search" size={48} color="#CBD5E1" />
+                  <Text style={{ marginTop: 10, color: '#64748B', fontSize: 16 }}>Nenhum imóvel encontrado</Text>
+                </View>
+              )}
+            </>
+          }
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0A73D9" />
           }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.flatListContent}

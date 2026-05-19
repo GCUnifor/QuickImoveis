@@ -1,37 +1,59 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions, Platform, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useProperties } from '@/context/PropertyContext';
+import { getListingById, PropertyListing } from '@/services/listings';
 
 const { width } = Dimensions.get('window');
 
 export default function PropertyDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { properties, toggleFavorite, isFavorite } = useProperties();
+  const { toggleFavorite, isFavorite } = useProperties();
+  const [property, setProperty] = useState<PropertyListing | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Find the property in the context
-  const contextProperty = properties.find(p => p.id === id);
+  useEffect(() => {
+    if (id) {
+      setLoading(true);
+      getListingById(id as string)
+        .then(setProperty)
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [id]);
 
-  // Fallback if not found (or for initial dummy data)
-  const property = contextProperty || {
-    id: '1',
-    title: 'Apartamento Moderno na Aldeota',
-    price: 'R$ 450.000',
-    location: 'Rua Desembargador Leite Albuquerque, Aldeota, Fortaleza - CE',
-    bedrooms: '3',
-    bathrooms: '2',
-    area: '85m²',
-    parking: '2',
-    description: 'Este apartamento incrível oferece uma vista deslumbrante da cidade e acabamentos de altíssimo padrão. Localizado no coração da Aldeota, próximo a escolas, shoppings e melhores restaurantes.',
-    image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=1000&auto=format&fit=crop',
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#0A73D9" />
+      </View>
+    );
+  }
+
+  if (!property) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text>Imóvel não encontrado.</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+          <Text style={{ color: '#0A73D9' }}>Voltar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const images = property.images && property.images.length > 0 
+    ? property.images.map(img => img.image_url) 
+    : ['https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1000&auto=format&fit=crop'];
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(price);
   };
-
-  const images = property.image ? [property.image] : [
-    'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=1000&auto=format&fit=crop',
-  ];
 
   return (
     <View style={styles.container}>
@@ -68,12 +90,14 @@ export default function PropertyDetailsScreen() {
         </View>
 
         <View style={styles.detailsContainer}>
-          <Text style={styles.price}>{property.price}</Text>
+          <Text style={styles.price}>{formatPrice(property.price)}</Text>
           <Text style={styles.title}>{property.title}</Text>
           
           <View style={styles.addressRow}>
             <Feather name="map-pin" size={16} color="#64748B" />
-            <Text style={styles.addressText}>{property.location}</Text>
+            <Text style={styles.addressText}>
+              {`${property.address.street}, ${property.address.number ? property.address.number + ', ' : ''}${property.address.neighborhood}, ${property.address.city} - ${property.address.state}`}
+            </Text>
           </View>
 
           <View style={styles.divider} />
@@ -82,22 +106,22 @@ export default function PropertyDetailsScreen() {
           <View style={styles.specsRow}>
             <View style={styles.specItem}>
               <MaterialCommunityIcons name="bed-outline" size={24} color="#0A73D9" />
-              <Text style={styles.specValue}>{property.bedrooms || '2'}</Text>
+              <Text style={styles.specValue}>{property.bedrooms || '0'}</Text>
               <Text style={styles.specLabel}>Quartos</Text>
             </View>
             <View style={styles.specItem}>
               <MaterialCommunityIcons name="shower" size={24} color="#0A73D9" />
-              <Text style={styles.specValue}>{property.bathrooms || '1'}</Text>
+              <Text style={styles.specValue}>1</Text>
               <Text style={styles.specLabel}>Banheiros</Text>
             </View>
             <View style={styles.specItem}>
               <MaterialCommunityIcons name="ruler-square" size={24} color="#0A73D9" />
-              <Text style={styles.specValue}>{property.area || '0m²'}</Text>
+              <Text style={styles.specValue}>{property.area ? `${property.area}m²` : '0m²'}</Text>
               <Text style={styles.specLabel}>Área</Text>
             </View>
             <View style={styles.specItem}>
               <MaterialCommunityIcons name="car-outline" size={24} color="#0A73D9" />
-              <Text style={styles.specValue}>{(property as any).parking || '1'}</Text>
+              <Text style={styles.specValue}>1</Text>
               <Text style={styles.specLabel}>Vagas</Text>
             </View>
           </View>

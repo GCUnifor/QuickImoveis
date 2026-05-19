@@ -26,7 +26,20 @@ export default function ForgotPasswordScreen() {
     try {
       setLoading(true);
       const data = await forgotPassword({ email: email.trim() });
-      Alert.alert("Sucesso", data.message || "Código enviado por e-mail.");
+      Alert.alert(
+        "Sucesso",
+        data.message || "Código enviado por e-mail.",
+        [
+          {
+            text: "OK",
+            onPress: () =>
+              router.push({
+                pathname: "/reset-password" as any,
+                params: { email: email.trim() },
+              }),
+          },
+        ]
+      );
     } catch (error) {
       Alert.alert(
         "Erro",

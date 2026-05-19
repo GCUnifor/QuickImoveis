@@ -6,6 +6,7 @@ import type {
   ForgotPasswordPayload,
   SignInPayload,
   SignUpPayload,
+  ResetPasswordPayload,
 } from "../types/auth";
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -47,6 +48,20 @@ export async function forgotPassword(payload: ForgotPasswordPayload) {
   } catch (error) {
     throw new Error(
       getErrorMessage(error, "Não foi possível enviar o código.")
+    );
+  }
+}
+
+export async function resetPassword(payload: ResetPasswordPayload) {
+  try {
+    const { data } = await api.post<{ message: string }>(
+      "/auth/reset-password",
+      payload
+    );
+    return data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(error, "Não foi possível redefinir a senha.")
     );
   }
 }
