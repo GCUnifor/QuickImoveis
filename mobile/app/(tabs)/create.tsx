@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import { 
   View, 
   Text, 
@@ -9,12 +10,28 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Dimensions
+  Dimensions,
+  Alert,
+  ActivityIndicator,
+  TouchableWithoutFeedback,
+  Keyboard
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useProperties } from '@/context/PropertyContext';
+import { createProperty } from '@/services/property';
+import { requestEmailVerification } from '@/services/auth';
+
+const STATE_MAP: Record<string, string> = {
+  'AC': 'Acre', 'AL': 'Alagoas', 'AP': 'Amapá', 'AM': 'Amazonas', 'BA': 'Bahia',
+  'CE': 'Ceará', 'DF': 'Distrito Federal', 'ES': 'Espírito Santo', 'GO': 'Goiás',
+  'MA': 'Maranhão', 'MT': 'Mato Grosso', 'MS': 'Mato Grosso do Sul', 'MG': 'Minas Gerais',
+  'PA': 'Pará', 'PB': 'Paraíba', 'PR': 'Paraná', 'PE': 'Pernambuco', 'PI': 'Piauí',
+  'RJ': 'Rio de Janeiro', 'RN': 'Rio Grande do Norte', 'RS': 'Rio Grande do Sul',
+  'RO': 'Rondônia', 'RR': 'Roraima', 'SC': 'Santa Catarina', 'SP': 'São Paulo',
+  'SE': 'Sergipe', 'TO': 'Tocantins'
+};
 
 const { width } = Dimensions.get('window');
 
@@ -24,67 +41,146 @@ const EXAMPLE_PHOTOS = [
   "https://images.unsplash.com/photo-1512915922686-57c11fd9b6b1?q=80&w=400&auto=format&fit=crop",
 ];
 
-const FEATURES = [
-  "Varanda Gourmet", "Ar Condicionado", "Armários Planejados", "Piscina", 
-  "Academia", "Salão de Festas", "Churrasqueira", "Jardim", 
-  "Segurança 24h", "Playground", "Quadra de Esportes", "Vista para o Mar"
-];
 
 export default function CreatePropertyScreen() {
   const router = useRouter();
   const { addProperty } = useProperties();
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     type: 'Venda' as 'Venda' | 'Aluguel',
     category: 'Apartamento',
     title: '',
     price: '',
     address: '',
+    number: '',
+    neighborhood: '',
     city: '',
     state: '',
     photos: [] as string[],
     description: '',
-    selectedFeatures: [] as string[],
     bedrooms: '',
-    bathrooms: '',
-    parking: '',
     area: '',
-    whatsapp: '',
   });
 
-  const handlePublish = () => {
-    addProperty({
-      title: formData.title || "Novo Imóvel",
-      price: formData.price.startsWith('R$') ? formData.price : `R$ ${formData.price}`,
-      location: `${formData.address}, ${formData.city} - ${formData.state}`,
-      category: formData.category,
-      type: formData.type,
-      image: formData.photos.length > 0 ? formData.photos[0] : EXAMPLE_PHOTOS[0],
-      description: formData.description,
-      features: formData.selectedFeatures,
-      bedrooms: (formData as any).bedrooms,
-      bathrooms: (formData as any).bathrooms,
-      area: (formData as any).area,
-      parking: (formData as any).parking,
-      whatsapp: (formData as any).whatsapp,
-    });
-    router.replace('/(tabs)');
+  const handlePublish = async () => {
+    if (loading) return;
+
+    // Validate inputs
+    if (!formData.title || !formData.price || !formData.address || !formData.city || !formData.state) {
+      Alert.alert('Campos obrigatórios', 'Por favor, preencha todos os campos obrigatórios (*).');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const parsedPrice = parseFloat(formData.price.replace(/\D/g, '')) || 0;
+      const parsedArea = parseFloat(formData.area.replace(/\D/g, '')) || 0;
+      const parsedBedrooms = parseInt(formData.bedrooms) || 0;
+
+      const typeMap: Record<string, "CASA" | "APARTAMENTO" | "COMERCIAL" | "TERRENO"> = {
+        'Apartamento': 'APARTAMENTO',
+        'Casa': 'CASA',
+        'Terreno': 'TERRENO',
+        'Comercial': 'COMERCIAL'
+      };
+      const propType = typeMap[formData.category] || 'CASA';
+
+      let fullDescription = formData.description;
+
+      // Map state
+      const stateKey = formData.state.toUpperCase().trim();
+      const fullStateName = STATE_MAP[stateKey] || stateKey;
+
+      const created = await createProperty({
+        title: formData.title,
+        description: fullDescription,
+        property_type: propType,
+        price: parsedPrice,
+        area: parsedArea,
+        bedrooms: parsedBedrooms,
+        status: 'DISPONIVEL',
+        address: {
+          street: formData.address,
+          number: formData.number,
+          neighborhood: formData.neighborhood,
+          city: formData.city,
+          state: fullStateName,
+          country: 'Brasil'
+        }
+      });
+
+      addProperty({
+        title: created.title,
+        price: formData.price.startsWith('R$') ? formData.price : `R$ ${formData.price}`,
+        location: `${formData.address}${formData.number ? ', ' + formData.number : ''}, ${formData.city} - ${formData.state.toUpperCase()}`,
+        category: formData.category,
+        type: formData.type,
+        image: formData.photos.length > 0 ? formData.photos[0] : EXAMPLE_PHOTOS[0],
+        description: formData.description,
+        bedrooms: formData.bedrooms,
+        area: formData.area,
+      });
+
+      Alert.alert('Sucesso', 'Imóvel publicado com sucesso!');
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      console.log('Error creating property:', error);
+      const errorMsg = error.message || 'Não foi possível publicar o imóvel.';
+      
+      // Auto-request email verification if this specific error is caught
+      if (errorMsg.includes('verificar seu e-mail')) {
+        try {
+          await requestEmailVerification();
+          Alert.alert(
+            'E-mail não verificado', 
+            'Acabamos de enviar um novo link de verificação para o seu e-mail. Por favor, verifique sua caixa de entrada e clique no link antes de tentar novamente.'
+          );
+        } catch (verifError) {
+          Alert.alert('E-mail não verificado', errorMsg + ' Não foi possível reenviar o link de verificação automaticamente.');
+        }
+      } else {
+        Alert.alert('Erro', errorMsg);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const toggleFeature = (feature: string) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedFeatures: prev.selectedFeatures.includes(feature)
-        ? prev.selectedFeatures.filter(f => f !== feature)
-        : [...prev.selectedFeatures, feature]
-    }));
-  };
 
   const addExamplePhotos = () => {
     setFormData(prev => ({
       ...prev,
       photos: [...prev.photos, ...EXAMPLE_PHOTOS].slice(0, 5)
     }));
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão negada', 'Desculpe, precisamos de permissão para acessar a galeria de fotos.');
+      return;
+    }
+
+    if (formData.photos.length >= 5) {
+      Alert.alert('Limite atingido', 'Você já adicionou o limite máximo de 5 fotos.');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        photos: [...prev.photos, result.assets[0].uri].slice(0, 5)
+      }));
+    }
   };
 
   const renderStep1 = () => (
@@ -131,59 +227,25 @@ export default function CreatePropertyScreen() {
         onChangeText={t => setFormData({...formData, price: t})}
       />
 
-      <Text style={styles.label}>WhatsApp para Contato *</Text>
-      <View style={styles.inputWithIconContainer}>
-        <View style={styles.iconPrefix}>
-          <MaterialCommunityIcons name="whatsapp" size={24} color="#25D366" />
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.label}>Área (m²)</Text>
+          <TextInput 
+            style={styles.input}
+            placeholder="Ex: 75"
+            keyboardType="numeric"
+            value={formData.area}
+            onChangeText={t => setFormData({...formData, area: t})}
+          />
         </View>
-        <TextInput 
-          style={styles.inputWithIcon}
-          placeholder="(11) 99999-9999"
-          keyboardType="phone-pad"
-          value={formData.whatsapp}
-          onChangeText={t => setFormData({...formData, whatsapp: t})}
-        />
-      </View>
-      <Text style={styles.helpText}>Os interessados entrarão em contato por este número</Text>
-
-      <Text style={styles.label}>Área (m²) *</Text>
-      <TextInput 
-        style={styles.input}
-        placeholder="Ex: 75"
-        keyboardType="numeric"
-        value={formData.area}
-        onChangeText={t => setFormData({...formData, area: t})}
-      />
-
-      <View style={styles.specsRowInputs}>
-        <View style={styles.specInputCol}>
+        <View style={{ flex: 1 }}>
           <Text style={styles.label}>Quartos</Text>
           <TextInput 
-            style={styles.inputSmall}
+            style={styles.input}
             placeholder="0"
             keyboardType="numeric"
             value={formData.bedrooms}
             onChangeText={t => setFormData({...formData, bedrooms: t})}
-          />
-        </View>
-        <View style={styles.specInputCol}>
-          <Text style={styles.label}>Banheiros</Text>
-          <TextInput 
-            style={styles.inputSmall}
-            placeholder="0"
-            keyboardType="numeric"
-            value={formData.bathrooms}
-            onChangeText={t => setFormData({...formData, bathrooms: t})}
-          />
-        </View>
-        <View style={styles.specInputCol}>
-          <Text style={styles.label}>Vagas</Text>
-          <TextInput 
-            style={styles.inputSmall}
-            placeholder="0"
-            keyboardType="numeric"
-            value={formData.parking}
-            onChangeText={t => setFormData({...formData, parking: t})}
           />
         </View>
       </View>
@@ -192,16 +254,37 @@ export default function CreatePropertyScreen() {
   );
 
   const renderStep2 = () => (
-    <View style={styles.stepContainer}>
+    <ScrollView style={styles.stepContainer} showsVerticalScrollIndicator={false}>
       <Text style={styles.sectionTitle}>Localização</Text>
       
-      <Text style={styles.label}>Endereço *</Text>
+      <Text style={styles.label}>Endereço (Rua) *</Text>
       <TextInput 
         style={styles.input}
-        placeholder="Rua, número"
+        placeholder="Ex: Rua das Flores"
         value={formData.address}
         onChangeText={t => setFormData({...formData, address: t})}
       />
+
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.label}>Número</Text>
+          <TextInput 
+            style={styles.input}
+            placeholder="Ex: 123"
+            value={formData.number}
+            onChangeText={t => setFormData({...formData, number: t})}
+          />
+        </View>
+        <View style={{ flex: 2 }}>
+          <Text style={styles.label}>Bairro</Text>
+          <TextInput 
+            style={styles.input}
+            placeholder="Ex: Centro"
+            value={formData.neighborhood}
+            onChangeText={t => setFormData({...formData, neighborhood: t})}
+          />
+        </View>
+      </View>
 
       <Text style={styles.label}>Cidade *</Text>
       <TextInput 
@@ -220,11 +303,12 @@ export default function CreatePropertyScreen() {
         value={formData.state}
         onChangeText={t => setFormData({...formData, state: t})}
       />
-    </View>
+      <View style={{ height: 20 }} />
+    </ScrollView>
   );
 
   const renderStep3 = () => (
-    <View style={styles.stepContainer}>
+    <ScrollView style={styles.stepContainer} showsVerticalScrollIndicator={false}>
       <Text style={styles.sectionTitle}>Fotos do Imóvel</Text>
       <Text style={styles.subtitle}>Adicione até 5 fotos do imóvel</Text>
 
@@ -246,7 +330,7 @@ export default function CreatePropertyScreen() {
           </View>
         ))}
         {formData.photos.length < 5 && (
-          <TouchableOpacity style={styles.addPhotoBtn}>
+          <TouchableOpacity style={styles.addPhotoBtn} onPress={pickImage}>
             <MaterialCommunityIcons name="camera-outline" size={32} color="#CBD5E1" />
             <Text style={styles.addPhotoText}>Adicionar</Text>
           </TouchableOpacity>
@@ -256,11 +340,12 @@ export default function CreatePropertyScreen() {
       <TouchableOpacity onPress={addExamplePhotos} style={styles.exampleBtn}>
         <Text style={styles.exampleBtnText}>Toque para adicionar fotos de exemplo</Text>
       </TouchableOpacity>
-    </View>
+      <View style={{ height: 20 }} />
+    </ScrollView>
   );
 
   const renderStep4 = () => (
-    <ScrollView style={styles.stepContainer}>
+    <ScrollView style={styles.stepContainer} showsVerticalScrollIndicator={false}>
       <Text style={styles.sectionTitle}>Descrição e Características</Text>
       
       <Text style={styles.label}>Descrição do Imóvel</Text>
@@ -272,72 +357,65 @@ export default function CreatePropertyScreen() {
         value={formData.description}
         onChangeText={t => setFormData({...formData, description: t})}
       />
-
-      <Text style={styles.label}>Características</Text>
-      <View style={styles.featuresList}>
-        {FEATURES.map((feature) => (
-          <TouchableOpacity 
-            key={feature}
-            style={[styles.featureChip, formData.selectedFeatures.includes(feature) && styles.featureChipActive]}
-            onPress={() => toggleFeature(feature)}
-          >
-            <Text style={[styles.featureText, formData.selectedFeatures.includes(feature) && styles.featureTextActive]}>
-              {feature}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <View style={{ height: 20 }} />
     </ScrollView>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => step > 1 ? setStep(s => s - 1) : router.replace('/(tabs)')}>
-            <Feather name="arrow-left" size={24} color="#000" />
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.headerTitle}>Cadastrar Imóvel</Text>
-            <Text style={styles.headerStep}>Passo {step} de 4</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => step > 1 ? setStep(s => s - 1) : router.replace('/(tabs)')}>
+              <Feather name="arrow-left" size={24} color="#000" />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.headerTitle}>Cadastrar Imóvel</Text>
+              <Text style={styles.headerStep}>Passo {step} de 4</Text>
+            </View>
+            <View style={{ width: 24 }} />
           </View>
-          <View style={{ width: 24 }} />
-        </View>
 
-        <View style={styles.progressRow}>
-          {[1, 2, 3, 4].map(s => (
-            <View 
-              key={s} 
-              style={[
-                styles.progressSegment, 
-                s <= step && styles.progressSegmentActive
-              ]} 
-            />
-          ))}
-        </View>
+          <View style={styles.progressRow}>
+            {[1, 2, 3, 4].map(s => (
+              <View 
+                key={s} 
+                style={[
+                  styles.progressSegment, 
+                  s <= step && styles.progressSegmentActive
+                ]} 
+              />
+            ))}
+          </View>
 
-        <View style={styles.content}>
-          {step === 1 && renderStep1()}
-          {step === 2 && renderStep2()}
-          {step === 3 && renderStep3()}
-          {step === 4 && renderStep4()}
-        </View>
+          <View style={styles.content}>
+            {step === 1 && renderStep1()}
+            {step === 2 && renderStep2()}
+            {step === 3 && renderStep3()}
+            {step === 4 && renderStep4()}
+          </View>
 
-        <View style={styles.footer}>
-          <TouchableOpacity 
-            style={styles.mainBtn} 
-            onPress={() => step < 4 ? setStep(s => s + 1) : handlePublish()}
-          >
-            <Text style={styles.mainBtnText}>
-              {step === 4 ? 'Publicar Imóvel' : 'Continuar'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <View style={styles.footer}>
+            <TouchableOpacity 
+              style={[styles.mainBtn, loading && { opacity: 0.7 }]} 
+              onPress={() => step < 4 ? setStep(s => s + 1) : handlePublish()}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.mainBtnText}>
+                  {step === 4 ? 'Publicar Imóvel' : 'Continuar'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -572,29 +650,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     textDecorationLine: 'underline',
-  },
-  featuresList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    paddingBottom: 20,
-  },
-  featureChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#F1F5F9',
-  },
-  featureChipActive: {
-    backgroundColor: '#0A73D9',
-  },
-  featureText: {
-    fontSize: 14,
-    color: '#475569',
-  },
-  featureTextActive: {
-    color: '#FFF',
-    fontWeight: '600',
   },
   footer: {
     padding: 20,

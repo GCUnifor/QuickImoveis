@@ -7,9 +7,12 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Alert,
 } from "react-native";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { Feather } from "@expo/vector-icons";
+import { signUp } from "../../services/auth";
+import { useAuth } from "../../context/AuthContext";
 
 function isValidEmail(email: string) {
   return /\S+@\S+\.\S+/.test(email.trim());
@@ -26,6 +29,7 @@ function formatCurrencyInput(value: string) {
 }
 
 export default function RegisterBuyerScreen() {
+  const { checkAuth } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,6 +37,7 @@ export default function RegisterBuyerScreen() {
   const [income, setIncome] = useState("");
   const [downPayment, setDownPayment] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const nameError =
     fullName.trim().length > 0 && fullName.trim().length < 3
@@ -62,6 +67,40 @@ export default function RegisterBuyerScreen() {
       confirmPassword === password
     );
   }, [fullName, email, password, confirmPassword]);
+
+  async function handleRegisterBuyer() {
+    if (!isFormValid || loading) return;
+
+    try {
+      setLoading(true);
+
+      const data = await signUp({
+        name: fullName.trim(),
+        email: email.trim(),
+        password,
+        role: "COMPRADOR",
+      });
+
+      console.log("SIGN UP BUYER SUCCESS:", data);
+
+      // Atualiza o estado global de autenticação para acionar o redirecionamento do RootLayout
+      await checkAuth();
+
+      Alert.alert(
+        "Conta criada",
+        `Bem-vindo, ${data.user.name ?? data.user.email}`
+      );
+    } catch (error) {
+      console.log("SIGN UP BUYER ERROR:", error);
+
+      Alert.alert(
+        "Erro no cadastro",
+        error instanceof Error ? error.message : "Não foi possível criar a conta."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -195,10 +234,16 @@ export default function RegisterBuyerScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.primaryButton, !isFormValid && styles.primaryButtonDisabled]}
-          disabled={!isFormValid}
+          style={[
+            styles.primaryButton,
+            (!isFormValid || loading) && styles.primaryButtonDisabled,
+          ]}
+          disabled={!isFormValid || loading}
+          onPress={handleRegisterBuyer}
         >
-          <Text style={styles.primaryButtonText}>Criar minha conta</Text>
+          <Text style={styles.primaryButtonText}>
+            {loading ? "Criando..." : "Criar minha conta"}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -6,12 +6,10 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { userRole } = useAuth();
+  const { logout, userRole, user } = useAuth();
 
   const baseMenuItems = [
-    { icon: 'bell', label: 'Notificações', iconLib: 'Feather' },
     { icon: 'settings', label: 'Configurações', iconLib: 'Feather' },
-    { icon: 'help-circle', label: 'Ajuda e suporte', iconLib: 'Feather' },
     { icon: 'file-text', label: 'Termos e condições', iconLib: 'Feather' },
   ];
 
@@ -31,8 +29,8 @@ export default function ProfileScreen() {
               <Feather name="user" size={40} color="#0A73D9" />
             </View>
             <View style={styles.textContainer}>
-              <Text style={styles.userName}>João Silva</Text>
-              <Text style={styles.userEmail}>user@example.com</Text>
+              <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
+              <Text style={styles.userEmail}>{user?.email || 'email@exemplo.com'}</Text>
             </View>
           </View>
 
@@ -70,7 +68,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={() => router.replace('/(auth)')}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
           <Feather name="log-out" size={20} color="#EF4444" />
           <Text style={styles.logoutText}>Sair da conta</Text>
         </TouchableOpacity>

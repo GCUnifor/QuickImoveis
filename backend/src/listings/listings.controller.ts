@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -41,7 +41,43 @@ export class ListingsController {
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.listingsService.findRecommendations(user.id, pageNum, limitNum);
+
+    return this.listingsService.findRecommendations(
+      user.id,
+      pageNum,
+      limitNum,
+    );
+  }
+
+  // ===========================
+  // NOVA ROTA DE FINANCIAMENTO
+  // ===========================
+
+  @Post('simulate-financing')
+  @Public()
+  @ApiOperation({
+    summary: 'Simular financiamento Caixa',
+    description:
+      '**Público.** Simula financiamento dos imóveis disponíveis com base na renda e entrada.\n\n' +
+      '**Regras:**\n' +
+      '- Entrada mínima: 20%\n' +
+      '- Parcela máxima: 30% da renda\n' +
+      '- Taxa até R$ 4.700: 8,35%\n' +
+      '- Taxa acima R$ 4.700: 10,3%',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Simulação realizada com sucesso',
+  })
+  simulateFinancing(
+    @Body()
+    body: {
+      renda_mensal: number;
+      entrada: number;
+      prazo_meses?: number;
+    },
+  ) {
+    return this.listingsService.simulateFinancing(body);
   }
 
   @Get()
@@ -63,7 +99,11 @@ export class ListingsController {
     required: false,
     description: 'DISPONIVEL, VENDIDO ou DISPONIVEL,VENDIDO. Padrão: DISPONIVEL',
   })
-  @ApiResponse({ status: 200, description: '{ data: [...], meta: { total, page, limit, totalPages } }' })
+  @ApiResponse({
+    status: 200,
+    description:
+      '{ data: [...], meta: { total, page, limit, totalPages } }',
+  })
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -75,10 +115,23 @@ export class ListingsController {
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    const minPrice = min_price != null ? parseFloat(min_price) : undefined;
-    const maxPrice = max_price != null ? parseFloat(max_price) : undefined;
+
+    const minPrice =
+      min_price != null
+        ? parseFloat(min_price)
+        : undefined;
+
+    const maxPrice =
+      max_price != null
+        ? parseFloat(max_price)
+        : undefined;
+
     const statuses = status
-      ? (status.split(',').map((s) => s.trim().toUpperCase()) as PropertyStatus[]).filter((s) =>
+      ? (status
+          .split(',')
+          .map((s) =>
+            s.trim().toUpperCase(),
+          ) as PropertyStatus[]).filter((s) =>
           ['DISPONIVEL', 'VENDIDO'].includes(s),
         )
       : undefined;
@@ -90,7 +143,9 @@ export class ListingsController {
       max_price: maxPrice,
       city,
       neighborhood,
-      status: statuses?.length ? statuses : undefined,
+      status: statuses?.length
+        ? statuses
+        : undefined,
     });
   }
 
@@ -101,9 +156,20 @@ export class ListingsController {
     description:
       '**Público.** Retorna imóveis de um corretor específico (portfolio). Por padrão inclui imóveis DISPONIVEL e VENDIDO, nunca RASCUNHO.',
   })
-  @ApiParam({ name: 'ownerId', description: 'UUID do corretor (users.id)' })
-  @ApiQuery({ name: 'page', required: false, description: 'Página (default: 1)' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Itens por página (default: 10)' })
+  @ApiParam({
+    name: 'ownerId',
+    description: 'UUID do corretor (users.id)',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Página (default: 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Itens por página (default: 10)',
+  })
   @ApiQuery({
     name: 'status',
     required: false,
@@ -123,9 +189,14 @@ export class ListingsController {
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
+
     const statuses = status
-      ? (status.split(',').map((s) => s.trim().toUpperCase()) as PropertyStatus[]).filter(
-          (s) => ['DISPONIVEL', 'VENDIDO'].includes(s),
+      ? (status
+          .split(',')
+          .map((s) =>
+            s.trim().toUpperCase(),
+          ) as PropertyStatus[]).filter((s) =>
+          ['DISPONIVEL', 'VENDIDO'].includes(s),
         )
       : undefined;
 
@@ -133,7 +204,9 @@ export class ListingsController {
       ownerId,
       page: pageNum,
       limit: limitNum,
-      status: statuses?.length ? statuses : undefined,
+      status: statuses?.length
+        ? statuses
+        : undefined,
     });
   }
 
@@ -144,9 +217,19 @@ export class ListingsController {
     description:
       '**Público.** Retorna detalhes do imóvel. Aceita status DISPONIVEL ou VENDIDO. Inclui endereço, imagens (image_url), dados do corretor.',
   })
-  @ApiParam({ name: 'id', description: 'UUID do imóvel' })
-  @ApiResponse({ status: 200, description: 'Imóvel encontrado' })
-  @ApiResponse({ status: 404, description: 'Imóvel não encontrado ou status RASCUNHO' })
+  @ApiParam({
+    name: 'id',
+    description: 'UUID do imóvel',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Imóvel encontrado',
+  })
+  @ApiResponse({
+    status: 404,
+    description:
+      'Imóvel não encontrado ou status RASCUNHO',
+  })
   findOne(@Param('id') id: string) {
     return this.listingsService.findOne(id);
   }

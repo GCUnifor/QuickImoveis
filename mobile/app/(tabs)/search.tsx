@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, ScrollView, Dimensions, Modal, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -10,95 +10,216 @@ const { width } = Dimensions.get('window');
 export default function SearchScreen() {
   const router = useRouter();
   const { properties, toggleFavorite, isFavorite } = useProperties();
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [selectedType, setSelectedType] = React.useState('Todos');
+  const [isFilterModalVisible, setIsFilterModalVisible] = React.useState(false);
+  const [selectedCategory, setSelectedCategory] = React.useState('Todas');
+  const [selectedBedrooms, setSelectedBedrooms] = React.useState('Qualquer');
+  const [selectedBathrooms, setSelectedBathrooms] = React.useState('Qualquer');
+
+  const filteredProperties = properties.filter(item => {
+    const matchesSearch = 
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesType = 
+      selectedType === 'Todos' || 
+      (selectedType === 'Comprar' && item.type === 'Venda') ||
+      (selectedType === 'Alugar' && item.type === 'Aluguel');
+
+    const matchesCategory = selectedCategory === 'Todas' || item.category === selectedCategory;
+    
+    const itemBeds = parseInt(item.bedrooms || '2');
+    let matchesBeds = true;
+    if (selectedBedrooms !== 'Qualquer') {
+      if (selectedBedrooms === '4+') matchesBeds = itemBeds >= 4;
+      else matchesBeds = itemBeds === parseInt(selectedBedrooms);
+    }
+
+    const itemBaths = parseInt(item.bathrooms || '2');
+    let matchesBaths = true;
+    if (selectedBathrooms !== 'Qualquer') {
+      if (selectedBathrooms === '4+') matchesBaths = itemBaths >= 4;
+      else matchesBaths = itemBaths === parseInt(selectedBathrooms);
+    }
+
+    return matchesSearch && matchesType && matchesCategory && matchesBeds && matchesBaths;
+  });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.searchRow}>
-          <View style={styles.searchBar}>
-            <Feather name="search" size={20} color="#64748B" />
-            <TextInput 
-              placeholder="Buscar por cidade ou bairro..." 
-              style={styles.searchInput}
-              placeholderTextColor="#94A3B8"
-            />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.searchRow}>
+            <View style={styles.searchBar}>
+              <Feather name="search" size={20} color="#64748B" />
+              <TextInput 
+                placeholder="Buscar por cidade, bairro ou tipo..." 
+                style={styles.searchInput}
+                placeholderTextColor="#94A3B8"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+            <TouchableOpacity style={styles.filterBtn} onPress={() => setIsFilterModalVisible(true)}>
+              <MaterialCommunityIcons name="filter-variant" size={24} color="#1E293B" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.filterBtn}>
-            <MaterialCommunityIcons name="filter-variant" size={24} color="#1E293B" />
-          </TouchableOpacity>
+
+          <View style={styles.chipRow}>
+            {['Todos', 'Comprar', 'Alugar'].map((chip) => (
+              <TouchableOpacity 
+                key={chip} 
+                style={[styles.chip, selectedType === chip && styles.activeChip]}
+                onPress={() => setSelectedType(chip)}
+              >
+                <Text style={[styles.chipText, selectedType === chip && styles.activeChipText]}>{chip}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-        <View style={styles.chipRow}>
-          {['Todos', 'Comprar', 'Alugar'].map((chip, index) => (
+        <ScrollView contentContainerStyle={styles.listContent}>
+          <Text style={styles.resultsText}>{filteredProperties.length} imóveis encontrados</Text>
+          
+          {filteredProperties.map((item) => (
             <TouchableOpacity 
-              key={index} 
-              style={[styles.chip, index === 0 && styles.activeChip]}
+              key={item.id} 
+              style={styles.card}
+              onPress={() => router.push(`/details/${item.id}`)}
             >
-              <Text style={[styles.chipText, index === 0 && styles.activeChipText]}>{chip}</Text>
+              <View style={styles.imageContainer}>
+                <Image source={item.image} style={styles.image} contentFit="cover" />
+                <TouchableOpacity 
+                  style={styles.heartBtn}
+                  onPress={() => toggleFavorite(item.id)}
+                >
+                  <Feather 
+                    name="heart" 
+                    size={20} 
+                    color={isFavorite(item.id) ? "#EF4444" : "#1E293B"} 
+                    fill={isFavorite(item.id) ? "#EF4444" : "transparent"}
+                  />
+                </TouchableOpacity>
+                <View style={styles.badgesRow}>
+                  <View style={[styles.badge, { backgroundColor: '#0A73D9' }]}>
+                    <Text style={styles.badgeText}>{item.type}</Text>
+                  </View>
+                  <View style={[styles.badge, { backgroundColor: '#F1F5F9' }]}>
+                    <Text style={[styles.badgeText, { color: '#1E293B' }]}>{item.category}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.info}>
+                <Text style={styles.price}>{item.price}</Text>
+                <Text style={styles.title}>{item.title}</Text>
+                <View style={styles.locationRow}>
+                  <Feather name="map-pin" size={14} color="#64748B" />
+                  <Text style={styles.locationText}>{item.location}</Text>
+                </View>
+                
+                <View style={styles.specsRow}>
+                  <View style={styles.spec}>
+                    <MaterialCommunityIcons name="bed-outline" size={18} color="#64748B" />
+                    <Text style={styles.specText}>{item.bedrooms || '2'} quartos</Text>
+                  </View>
+                  <View style={styles.spec}>
+                    <MaterialCommunityIcons name="shower" size={18} color="#64748B" />
+                    <Text style={styles.specText}>{item.bathrooms || '2'}</Text>
+                  </View>
+                  <View style={styles.spec}>
+                    <MaterialCommunityIcons name="ruler-square" size={18} color="#64748B" />
+                    <Text style={styles.specText}>{item.area || '75m²'}</Text>
+                  </View>
+                </View>
+              </View>
             </TouchableOpacity>
           ))}
-        </View>
-      </View>
+        </ScrollView>
 
-      <ScrollView contentContainerStyle={styles.listContent}>
-        <Text style={styles.resultsText}>{properties.length} imóveis encontrados</Text>
-        
-        {properties.map((item) => (
-          <TouchableOpacity 
-            key={item.id} 
-            style={styles.card}
-            onPress={() => router.push(`/details/${item.id}`)}
-          >
-            <View style={styles.imageContainer}>
-              <Image source={item.image} style={styles.image} contentFit="cover" />
-              <TouchableOpacity 
-                style={styles.heartBtn}
-                onPress={() => toggleFavorite(item.id)}
-              >
-                <Feather 
-                  name="heart" 
-                  size={20} 
-                  color={isFavorite(item.id) ? "#EF4444" : "#1E293B"} 
-                  fill={isFavorite(item.id) ? "#EF4444" : "transparent"}
-                />
-              </TouchableOpacity>
-              <View style={styles.badgesRow}>
-                <View style={[styles.badge, { backgroundColor: '#0A73D9' }]}>
-                  <Text style={styles.badgeText}>{item.type}</Text>
+        <Modal
+          visible={isFilterModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsFilterModalVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Filtros Avançados</Text>
+                  <TouchableOpacity onPress={() => setIsFilterModalVisible(false)}>
+                    <Feather name="x" size={24} color="#1E293B" />
+                  </TouchableOpacity>
                 </View>
-                <View style={[styles.badge, { backgroundColor: '#F1F5F9' }]}>
-                  <Text style={[styles.badgeText, { color: '#1E293B' }]}>{item.category}</Text>
+
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <Text style={styles.filterSectionTitle}>Categoria</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+                    {['Todas', 'Casa', 'Apartamento', 'Terreno', 'Comercial'].map(cat => (
+                      <TouchableOpacity
+                        key={cat}
+                        style={[styles.filterOptionBtn, selectedCategory === cat && styles.filterOptionBtnActive]}
+                        onPress={() => setSelectedCategory(cat)}
+                      >
+                        <Text style={[styles.filterOptionText, selectedCategory === cat && styles.filterOptionTextActive]}>{cat}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+
+                  <Text style={styles.filterSectionTitle}>Quartos</Text>
+                  <View style={styles.filterRow}>
+                    {['Qualquer', '1', '2', '3', '4+'].map(num => (
+                      <TouchableOpacity
+                        key={num}
+                        style={[styles.filterOptionBtn, selectedBedrooms === num && styles.filterOptionBtnActive]}
+                        onPress={() => setSelectedBedrooms(num)}
+                      >
+                        <Text style={[styles.filterOptionText, selectedBedrooms === num && styles.filterOptionTextActive]}>{num}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.filterSectionTitle}>Banheiros</Text>
+                  <View style={styles.filterRow}>
+                    {['Qualquer', '1', '2', '3', '4+'].map(num => (
+                      <TouchableOpacity
+                        key={num}
+                        style={[styles.filterOptionBtn, selectedBathrooms === num && styles.filterOptionBtnActive]}
+                        onPress={() => setSelectedBathrooms(num)}
+                      >
+                        <Text style={[styles.filterOptionText, selectedBathrooms === num && styles.filterOptionTextActive]}>{num}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+
+                <View style={styles.modalFooter}>
+                  <TouchableOpacity 
+                    style={styles.clearFilterBtn}
+                    onPress={() => {
+                      setSelectedCategory('Todas');
+                      setSelectedBedrooms('Qualquer');
+                      setSelectedBathrooms('Qualquer');
+                    }}
+                  >
+                    <Text style={styles.clearFilterText}>Limpar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.applyFilterBtn}
+                    onPress={() => setIsFilterModalVisible(false)}
+                  >
+                    <Text style={styles.applyFilterText}>Aplicar Filtros</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
-
-            <View style={styles.info}>
-              <Text style={styles.price}>{item.price}</Text>
-              <Text style={styles.title}>{item.title}</Text>
-              <View style={styles.locationRow}>
-                <Feather name="map-pin" size={14} color="#64748B" />
-                <Text style={styles.locationText}>{item.location}</Text>
-              </View>
-              
-              <View style={styles.specsRow}>
-                <View style={styles.spec}>
-                  <MaterialCommunityIcons name="bed-outline" size={18} color="#64748B" />
-                  <Text style={styles.specText}>{item.bedrooms || '2'} quartos</Text>
-                </View>
-                <View style={styles.spec}>
-                  <MaterialCommunityIcons name="shower" size={18} color="#64748B" />
-                  <Text style={styles.specText}>{item.bathrooms || '2'}</Text>
-                </View>
-                <View style={styles.spec}>
-                  <MaterialCommunityIcons name="ruler-square" size={18} color="#64748B" />
-                  <Text style={styles.specText}>{item.area || '75m²'}</Text>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </SafeAreaView>
+          </TouchableWithoutFeedback>
+        </Modal>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -261,5 +382,95 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     marginLeft: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 12,
+    marginTop: 16,
+  },
+  filterScroll: {
+    marginBottom: 8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 8,
+  },
+  filterOptionBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: 'transparent',
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  filterOptionBtnActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
+  },
+  filterOptionText: {
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  filterOptionTextActive: {
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    marginTop: 24,
+    gap: 16,
+  },
+  clearFilterBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  clearFilterText: {
+    color: '#64748B',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  applyFilterBtn: {
+    flex: 2,
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: '#0A73D9',
+    alignItems: 'center',
+  },
+  applyFilterText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
