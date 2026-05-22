@@ -20,7 +20,7 @@ import { Image } from 'expo-image';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useProperties } from '@/context/PropertyContext';
-import { createProperty } from '@/services/property';
+import { createProperty, uploadPropertyImage } from '@/services/property';
 import { requestEmailVerification } from '@/services/auth';
 
 const STATE_MAP: Record<string, string> = {
@@ -110,6 +110,17 @@ export default function CreatePropertyScreen() {
           country: 'Brasil'
         }
       });
+
+      try {
+        for (const photoUri of formData.photos) {
+          if (!photoUri.startsWith('http')) {
+            await uploadPropertyImage(created.id, photoUri);
+          }
+        }
+      } catch (uploadError) {
+        console.error("Erro no upload de imagens:", uploadError);
+        Alert.alert('Aviso', 'O imóvel foi criado, mas houve um erro ao enviar algumas fotos.');
+      }
 
       addProperty({
         title: created.title,

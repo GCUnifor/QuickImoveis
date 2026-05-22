@@ -14,6 +14,13 @@ export default function PropertyDetailsScreen() {
   const { toggleFavorite, isFavorite } = useProperties();
   const [property, setProperty] = useState<PropertyListing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const handleScroll = (event: any) => {
+    const scrollPosition = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollPosition / width);
+    setCurrentImageIndex(index);
+  };
 
   useEffect(() => {
     if (id) {
@@ -60,7 +67,17 @@ export default function PropertyDetailsScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Image Carrousel Area */}
         <View style={styles.imageContainer}>
-          <Image source={images[0]} style={styles.mainImage} contentFit="cover" />
+          <ScrollView 
+            horizontal 
+            pagingEnabled 
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          >
+            {images.map((img, index) => (
+              <Image key={index} source={img} style={{ width, height: 350 }} contentFit="contain" />
+            ))}
+          </ScrollView>
           
           <SafeAreaView style={styles.headerActions}>
             <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()}>
@@ -85,7 +102,7 @@ export default function PropertyDetailsScreen() {
           </SafeAreaView>
 
           <View style={styles.imageCount}>
-            <Text style={styles.imageCountText}>1 / {images.length}</Text>
+            <Text style={styles.imageCountText}>{currentImageIndex + 1} / {images.length}</Text>
           </View>
         </View>
 
@@ -145,16 +162,6 @@ export default function PropertyDetailsScreen() {
               <Feather name="message-square" size={20} color="#0A73D9" />
             </TouchableOpacity>
           </View>
-
-          {/* Financing Simulator Placeholder */}
-          <TouchableOpacity style={styles.simulatorCard}>
-            <MaterialCommunityIcons name="calculator" size={24} color="#0A73D9" />
-            <View style={styles.simulatorText}>
-              <Text style={styles.simulatorTitle}>Simular Financiamento</Text>
-              <Text style={styles.simulatorSub}>Veja as parcelas estimadas</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color="#64748B" />
-          </TouchableOpacity>
         </View>
 
         <View style={{ height: 100 }} />
@@ -186,6 +193,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     height: 350,
     position: 'relative',
+    backgroundColor: '#E2E8F0',
   },
   mainImage: {
     width: '100%',
@@ -218,7 +226,7 @@ const styles = StyleSheet.create({
   },
   imageCount: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 40,
     right: 20,
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: 12,
@@ -235,7 +243,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    marginTop: -30,
+    marginTop: -20,
   },
   price: {
     fontSize: 28,

@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { getFavorites, addFavorite, deleteFavorite, simulateFinancing, SimulationResult } from '@/services/listings';
 
 export interface Property {
   id: string;
@@ -22,8 +24,13 @@ interface PropertyContextType {
   properties: Property[];
   favorites: string[];
   addProperty: (property: Omit<Property, 'id'>) => void;
-  toggleFavorite: (id: string) => void;
+  toggleFavorite: (id: string) => Promise<void>;
   isFavorite: (id: string) => boolean;
+  renda: number | null;
+  entrada: number | null;
+  simulatedProperties: SimulationResult[] | null;
+  runSimulation: (renda: number, entrada: number) => Promise<void>;
+  clearSimulation: () => void;
 }
 
 const PropertyContext = createContext<PropertyContextType | undefined>(undefined);
@@ -50,8 +57,29 @@ const INITIAL_PROPERTIES: Property[] = [
 ];
 
 export function PropertyProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [properties, setProperties] = useState<Property[]>(INITIAL_PROPERTIES);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [renda, setRenda] = useState<number | null>(null);
+  const [entrada, setEntrada] = useState<number | null>(null);
+  const [simulatedProperties, setSimulatedProperties] = useState<SimulationResult[] | null>(null);
+
+  useEffect(() => {
+    async function loadFavorites() {
+      if (isAuthenticated) {
+        try {
+          const res = await getFavorites({ page: 1, limit: 100 });
+          setFavorites(res.data.map(f => f.id));
+        } catch (error) {
+          console.error("Failed to load favorites from backend:", error);
+        }
+      } else {
+        setFavorites([]);
+        clearSimulation();
+      }
+    }
+    loadFavorites();
+  }, [isAuthenticated]);
 
   const addProperty = (newProp: Omit<Property, 'id'>) => {
     const propertyWithId = {
@@ -62,16 +90,64 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     setProperties(prev => [propertyWithId, ...prev]);
   };
 
-  const toggleFavorite = (id: string) => {
-    setFavorites(prev => 
-      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
-    );
+  const toggleFavorite = async (id: string) => {
+    const isFav = favorites.includes(id);
+    try {
+      if (isFav) {
+        setFavorites(prev => prev.filter(f => f !== id));
+        await deleteFavorite(id);
+      } else {
+        setFavorites(prev => [...prev, id]);
+        await addFavorite(id);
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      // Rollback on error
+      if (isFav) {
+        setFavorites(prev => [...prev, id]);
+      } else {
+        setFavorites(prev => prev.filter(f => f !== id));
+      }
+    }
   };
 
   const isFavorite = (id: string) => favorites.includes(id);
 
+  const runSimulation = async (rendaValue: number, entradaValue: number) => {
+    try {
+      const response = await simulateFinancing({
+        renda_mensal: rendaValue,
+        entrada: entradaValue,
+      });
+      const recommended = response.data.filter(item => item.status === "recomendado");
+      setSimulatedProperties(recommended);
+      setRenda(rendaValue);
+      setEntrada(entradaValue);
+    } catch (error) {
+      console.error("Error running simulation in context:", error);
+      throw error;
+    }
+  };
+
+  const clearSimulation = () => {
+    setSimulatedProperties(null);
+    setRenda(null);
+    setEntrada(null);
+  };
+
   return (
-    <PropertyContext.Provider value={{ properties, favorites, addProperty, toggleFavorite, isFavorite }}>
+    <PropertyContext.Provider value={{ 
+      properties, 
+      favorites, 
+      addProperty, 
+      toggleFavorite, 
+      isFavorite,
+      renda,
+      entrada,
+      simulatedProperties,
+      runSimulation,
+      clearSimulation
+    }}>
       {children}
     </PropertyContext.Provider>
   );

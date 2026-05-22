@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { getToken, getUser, clearSession } from '../storage/auth-storage';
+import { setAuthToken } from '../services/api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -26,6 +27,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAuthenticated(!!token);
       setUser(userData);
       
+      if (token) {
+        setAuthToken(token);
+      }
+      
       if (userData?.role) {
         setUserRole(userData.role === 'CORRETOR' ? 'broker' : 'buyer');
       }
@@ -38,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    setAuthToken(null);
     await clearSession();
     setIsAuthenticated(false);
   }
