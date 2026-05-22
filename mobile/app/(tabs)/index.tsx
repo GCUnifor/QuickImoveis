@@ -258,22 +258,6 @@ export default function HomeScreen() {
               {property.title}
             </Text>
 
-            {simInfo && (
-              <View style={styles.simulationBox}>
-                <View style={styles.simulationRow}>
-                  <Feather name="check-circle" size={14} color="#065F46" />
-                  <Text style={styles.simulationTextBold}>
-                    Parcelas: {formatPrice(simInfo.valor_parcela_calculada)}/mês
-                  </Text>
-                </View>
-                <View style={styles.simulationRow}>
-                  <Feather name="pie-chart" size={14} color="#6B7280" />
-                  <Text style={styles.simulationText}>
-                    Compromete {simInfo.percentual_renda_comprometido}% da renda
-                  </Text>
-                </View>
-              </View>
-            )}
 
             <View style={styles.locationRow}>
               <Feather name="map-pin" size={14} color="#6B7280" />
