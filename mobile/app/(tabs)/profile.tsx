@@ -54,6 +54,8 @@ export default function ProfileScreen() {
                   router.push('/my-properties' as any);
                 } else if (item.label === 'Editar Renda') {
                   router.push('/simulator' as any);
+                } else if (item.label === 'Termos e condições') {
+                  router.push('/terms' as any);
                 }
               }}
             >
