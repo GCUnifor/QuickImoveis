@@ -133,9 +133,19 @@ export default function SearchScreen() {
                       />
                     </TouchableOpacity>
                     <View style={styles.badgesRow}>
-                      <View style={[styles.badge, { backgroundColor: '#0A73D9' }]}>
-                        <Text style={styles.badgeText}>Venda</Text>
-                      </View>
+                      {item.status === 'VENDIDO' ? (
+                        <View style={[styles.badge, { backgroundColor: '#94A3B8' }]}>
+                          <Text style={styles.badgeText}>Vendido</Text>
+                        </View>
+                      ) : item.status === 'EM_NEGOCIACAO' ? (
+                        <View style={[styles.badge, { backgroundColor: '#F59E0B' }]}>
+                          <Text style={styles.badgeText}>Em negociação</Text>
+                        </View>
+                      ) : (
+                        <View style={[styles.badge, { backgroundColor: '#0A73D9' }]}>
+                          <Text style={styles.badgeText}>Venda</Text>
+                        </View>
+                      )}
                       <View style={[styles.badge, { backgroundColor: '#F1F5F9' }]}>
                         <Text style={[styles.badgeText, { color: '#1E293B' }]}>{formatType(item.property_type)}</Text>
                       </View>

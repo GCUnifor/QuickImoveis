@@ -2,7 +2,7 @@ import axios from "axios";
 import { clearSession } from "../storage/auth-storage";
 
 export const api = axios.create({
-  baseURL: "https://quickimoveis.onrender.com",
+  baseURL: process.env.EXPO_PUBLIC_API_URL || "https://quickimoveis.onrender.com",
   headers: {
     "Content-Type": "application/json",
   },

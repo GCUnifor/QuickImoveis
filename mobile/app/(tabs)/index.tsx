@@ -18,16 +18,12 @@ import { Image } from "expo-image";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useProperties } from "@/context/PropertyContext";
-<<<<<<< HEAD
 import { useAuth } from "@/context/AuthContext";
-import { getListings, PropertyListing } from "@/services/listings";
-=======
 import {
   getListings,
   getRecommendedListings,
   PropertyListing,
 } from "@/services/listings";
->>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
 
 type FeedMode = "all" | "recommended";
 
@@ -70,35 +66,8 @@ const HomeHeader = React.memo(
         </View>
       </View>
 
-<<<<<<< HEAD
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Feather name="search" size={20} color="#6B7280" />
-          <TextInput
-            placeholder="Buscar por cidade..."
-            placeholderTextColor="#94A3B8"
-            style={styles.searchInput}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-      </View>
-    </View>
-
-    {/* Filters Section */}
-    <View style={styles.whiteBackground}>
-      <FlatList
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        data={["Todos", "Apartamento", "Casa"]}
-        keyExtractor={(item) => item}
-        contentContainerStyle={styles.filterScroll}
-        renderItem={({ item: filter }) => (
-=======
       <View style={styles.whiteBackground}>
         <View style={styles.toggleRow}>
->>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
           <TouchableOpacity
             style={[
               styles.toggleButton,
@@ -186,7 +155,6 @@ function formatPrice(price: number) {
 
 export default function HomeScreen() {
   const router = useRouter();
-<<<<<<< HEAD
   const { isAuthenticated } = useAuth();
   const { 
     toggleFavorite, 
@@ -197,9 +165,6 @@ export default function HomeScreen() {
     renda, 
     entrada 
   } = useProperties();
-=======
-  const { toggleFavorite, isFavorite } = useProperties();
->>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
 
   const [selectedFilter, setSelectedFilter] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
@@ -207,8 +172,8 @@ export default function HomeScreen() {
   const [listings, setListings] = useState<PropertyListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-<<<<<<< HEAD
   // States for simulate-financing modal
   const [showModal, setShowModal] = useState(false);
   const [rendaInput, setRendaInput] = useState("");
@@ -247,47 +212,51 @@ export default function HomeScreen() {
     }
   };
 
-  const fetchListings = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    try {
-      const response = await getListings({
-        city: searchQuery || undefined,
-      });
-      setListings(response.data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [searchQuery]);
-=======
   const fetchListings = useCallback(
     async (isRefresh = false) => {
       if (!isRefresh) setLoading(true);
+      setErrorMsg(null);
 
       try {
         let response;
 
         if (feedMode === "recommended") {
-          response = await getRecommendedListings();
+          if (!isAuthenticated && !simulatedProperties) {
+            setListings([]);
+            setErrorMsg(null);
+            setLoading(false);
+            setRefreshing(false);
+            return;
+          }
+          response = await getRecommendedListings({ limit: 100 });
         } else {
           response = await getListings({
             city: searchQuery || undefined,
+            limit: 100,
           });
         }
 
         setListings(response.data);
-      } catch (error) {
+      } catch (error: any) {
         console.log("Erro ao carregar imóveis:", error);
+        if (feedMode === "recommended") {
+          setErrorMsg(null);
+          setListings([]);
+        } else {
+          if (error.response && error.response.data && error.response.data.message) {
+            const msg = error.response.data.message;
+            setErrorMsg(Array.isArray(msg) ? msg[0] : msg);
+          } else {
+            setErrorMsg("Erro ao carregar imóveis. Verifique sua conexão.");
+          }
+        }
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [feedMode, searchQuery]
+    [feedMode, searchQuery, isAuthenticated, simulatedProperties]
   );
->>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -303,9 +272,22 @@ export default function HomeScreen() {
   }, [fetchListings]);
 
   const filteredProperties = useMemo(() => {
-    const baseList = simulatedProperties 
-      ? simulatedProperties.map(s => s.property)
-      : listings;
+    let baseList: PropertyListing[] = [];
+
+    if (feedMode === "recommended") {
+      // Show ONLY recommended properties
+      baseList = simulatedProperties
+        ? simulatedProperties.map((s) => s.property)
+        : listings;
+    } else {
+      // Show recommended properties first, then the rest of the listings
+      const recommendedList = simulatedProperties
+        ? simulatedProperties.map((s) => s.property)
+        : [];
+      const recommendedIds = new Set(recommendedList.map((p) => p.id));
+      const otherList = listings.filter((p) => !recommendedIds.has(p.id));
+      baseList = [...recommendedList, ...otherList];
+    }
 
     return baseList.filter((p) => {
       const typeMap: Record<string, string> = {
@@ -317,14 +299,6 @@ export default function HomeScreen() {
 
       const matchesCategory =
         selectedFilter === "Todos" || p.property_type === typeMap[selectedFilter];
-<<<<<<< HEAD
-      
-      return matchesCategory;
-    });
-  }, [listings, selectedFilter, simulatedProperties]);
-=======
->>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
-
       const matchesSearch =
         !searchQuery ||
         p.address?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -333,7 +307,7 @@ export default function HomeScreen() {
 
       return matchesCategory && matchesSearch;
     });
-  }, [listings, selectedFilter, searchQuery]);
+  }, [feedMode, listings, selectedFilter, simulatedProperties, searchQuery]);
 
   const renderProperty = ({ item: property }: { item: PropertyListing }) => {
     const mainImage =
@@ -355,8 +329,15 @@ export default function HomeScreen() {
               style={styles.propertyImage}
               contentFit="cover"
             />
-<<<<<<< HEAD
-            {simInfo ? (
+            {property.status === 'VENDIDO' ? (
+              <View style={[styles.statusBadge, { backgroundColor: '#94A3B8' }]}>
+                <Text style={styles.statusText}>Vendido</Text>
+              </View>
+            ) : property.status === 'EM_NEGOCIACAO' ? (
+              <View style={[styles.statusBadge, { backgroundColor: '#F59E0B' }]}>
+                <Text style={styles.statusText}>Em negociação</Text>
+              </View>
+            ) : simInfo ? (
               <View style={[styles.statusBadge, { backgroundColor: '#10B981' }]}>
                 <Text style={styles.statusText}>Recomendado</Text>
               </View>
@@ -365,11 +346,7 @@ export default function HomeScreen() {
                 <Text style={styles.statusText}>Venda</Text>
               </View>
             )}
-            <TouchableOpacity 
-=======
-
             <TouchableOpacity
->>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
               style={styles.favoriteBtn}
               onPress={(e) => {
                 e.stopPropagation();
@@ -390,10 +367,7 @@ export default function HomeScreen() {
               {property.title}
             </Text>
 
-<<<<<<< HEAD
 
-=======
->>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
             <View style={styles.locationRow}>
               <Feather name="map-pin" size={14} color="#6B7280" />
               <Text style={styles.locationText}>
@@ -437,8 +411,6 @@ export default function HomeScreen() {
                 feedMode={feedMode}
                 setFeedMode={setFeedMode}
               />
-<<<<<<< HEAD
-              
               {/* Simulation Banner */}
               {simulatedProperties && (
                 <View style={styles.simulationBanner}>
@@ -453,8 +425,6 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
               )}
-=======
->>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
 
               {loading && !refreshing && (
                 <View style={{ padding: 20 }}>
@@ -462,9 +432,9 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {!loading && filteredProperties.length === 0 && (
+              {!loading && filteredProperties.length === 0 && (feedMode !== "recommended" || (!!simulatedProperties || !!renda || listings.length > 0)) && (
                 <View style={{ padding: 40, alignItems: "center" }}>
-                  <Feather name="search" size={48} color="#CBD5E1" />
+                  <Feather name={errorMsg ? "info" : "search"} size={48} color="#CBD5E1" />
                   <Text
                     style={{
                       marginTop: 10,
@@ -473,7 +443,7 @@ export default function HomeScreen() {
                       textAlign: "center",
                     }}
                   >
-                    Nenhum imóvel encontrado
+                    {errorMsg || "Nenhum imóvel encontrado"}
                   </Text>
                 </View>
               )}
@@ -761,7 +731,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     paddingBottom: 20,
   },
-<<<<<<< HEAD
   simulationBox: {
     backgroundColor: "#F0FDF4",
     padding: 12,
@@ -916,7 +885,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
   },
+  statusBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  statusText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
 });
-=======
-});
->>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)

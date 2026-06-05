@@ -7,7 +7,7 @@ export interface CreatePropertyData {
   price: number;
   area?: number;
   bedrooms?: number;
-  status?: "RASCUNHO" | "DISPONIVEL" | "VENDIDO";
+  status?: "RASCUNHO" | "DISPONIVEL" | "VENDIDO" | "EM_NEGOCIACAO";
   address: {
     street?: string;
     number?: string;

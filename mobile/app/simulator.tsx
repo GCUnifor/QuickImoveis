@@ -142,7 +142,16 @@ export default function SimulatorScreen() {
           <View style={{ flex: 1 }}>
             {/* Header */}
             <View style={styles.blueHeader}>
-              <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={styles.backBtn}>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace('/(tabs)');
+                  }
+                }} 
+                style={styles.backBtn}
+              >
                 <Feather name="x" size={24} color="#FFFFFF" />
               </TouchableOpacity>
               <View>

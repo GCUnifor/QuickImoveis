@@ -18,8 +18,16 @@ export default function MyPropertiesScreen() {
       onPress={() => router.push(`/details/${item.id}`)}
     >
       <Image source={item.image} style={styles.image} contentFit="cover" />
-      <View style={styles.statusBadge}>
-        <Text style={styles.statusText}>Publicado</Text>
+      <View style={[
+        styles.statusBadge,
+        item.status === 'VENDIDO' && { backgroundColor: '#94A3B8' },
+        item.status === 'EM_NEGOCIACAO' && { backgroundColor: '#F59E0B' },
+      ]}>
+        <Text style={styles.statusText}>
+          {item.status === 'DISPONIVEL' ? 'Publicado' :
+           item.status === 'VENDIDO' ? 'Vendido' :
+           item.status === 'EM_NEGOCIACAO' ? 'Em negociação' : 'Publicado'}
+        </Text>
       </View>
       
       <View style={styles.info}>
