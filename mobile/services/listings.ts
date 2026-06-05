@@ -1,5 +1,3 @@
-import { api } from "./api";
-
 export interface PropertyListing {
   id: string;
   title: string;
@@ -33,6 +31,137 @@ export interface ListingsResponse {
   };
 }
 
+const MOCK_LISTINGS: PropertyListing[] = [
+  {
+    id: "1",
+    title: "Apartamento Moderno na Aldeota",
+    description: "Apartamento bem localizado, ideal para quem busca conforto.",
+    property_type: "APARTAMENTO",
+    price: 450000,
+    area: 75,
+    bedrooms: 2,
+    status: "DISPONIVEL",
+    address: {
+      street: "Rua Silva Jatahy",
+      number: "1200",
+      neighborhood: "Aldeota",
+      city: "Fortaleza",
+      state: "CE",
+    },
+    images: [
+      {
+        id: "img1",
+        image_url:
+          "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?q=80&w=1200&auto=format&fit=crop",
+        sort_order: 1,
+      },
+    ],
+  },
+  {
+    id: "2",
+    title: "Casa Contemporânea nas Dunas",
+    description: "Casa espaçosa com ótimo padrão construtivo.",
+    property_type: "CASA",
+    price: 890000,
+    area: 180,
+    bedrooms: 4,
+    status: "DISPONIVEL",
+    address: {
+      street: "Av. Litorânea",
+      number: "450",
+      neighborhood: "Dunas",
+      city: "Fortaleza",
+      state: "CE",
+    },
+    images: [
+      {
+        id: "img2",
+        image_url:
+          "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1200&auto=format&fit=crop",
+        sort_order: 1,
+      },
+    ],
+  },
+  {
+    id: "3",
+    title: "Terreno em Eusébio",
+    description: "Terreno amplo em região valorizada.",
+    property_type: "TERRENO",
+    price: 220000,
+    area: 300,
+    bedrooms: 0,
+    status: "DISPONIVEL",
+    address: {
+      street: "Rua das Acácias",
+      number: "50",
+      neighborhood: "Centro",
+      city: "Eusébio",
+      state: "CE",
+    },
+    images: [
+      {
+        id: "img3",
+        image_url:
+          "https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1200&auto=format&fit=crop",
+        sort_order: 1,
+      },
+    ],
+  },
+];
+
+const MOCK_RECOMMENDED_LISTINGS: PropertyListing[] = [
+  {
+    id: "1",
+    title: "Apartamento Moderno na Aldeota",
+    description: "Apartamento bem localizado, ideal para quem busca conforto.",
+    property_type: "APARTAMENTO",
+    price: 450000,
+    area: 75,
+    bedrooms: 2,
+    status: "DISPONIVEL",
+    address: {
+      street: "Rua Silva Jatahy",
+      number: "1200",
+      neighborhood: "Aldeota",
+      city: "Fortaleza",
+      state: "CE",
+    },
+    images: [
+      {
+        id: "img1",
+        image_url:
+          "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?q=80&w=1200&auto=format&fit=crop",
+        sort_order: 1,
+      },
+    ],
+  },
+  {
+    id: "2",
+    title: "Casa Contemporânea nas Dunas",
+    description: "Casa espaçosa com ótimo padrão construtivo.",
+    property_type: "CASA",
+    price: 890000,
+    area: 180,
+    bedrooms: 4,
+    status: "DISPONIVEL",
+    address: {
+      street: "Av. Litorânea",
+      number: "450",
+      neighborhood: "Dunas",
+      city: "Fortaleza",
+      state: "CE",
+    },
+    images: [
+      {
+        id: "img2",
+        image_url:
+          "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1200&auto=format&fit=crop",
+        sort_order: 1,
+      },
+    ],
+  },
+];
+
 export async function getListings(params?: {
   page?: number;
   limit?: number;
@@ -40,23 +169,51 @@ export async function getListings(params?: {
   min_price?: number;
   max_price?: number;
 }) {
-  try {
-    const response = await api.get<ListingsResponse>("/listings", { params });
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching listings:", error);
-    throw error;
-  }
+  const cityFilter = params?.city?.toLowerCase().trim();
+
+  const filtered = cityFilter
+    ? MOCK_LISTINGS.filter(
+        (item) =>
+          item.address.city.toLowerCase().includes(cityFilter) ||
+          item.address.neighborhood.toLowerCase().includes(cityFilter) ||
+          item.title.toLowerCase().includes(cityFilter)
+      )
+    : MOCK_LISTINGS;
+
+  return {
+    data: filtered,
+    meta: {
+      total: filtered.length,
+      page: 1,
+      limit: filtered.length,
+      totalPages: 1,
+    },
+  };
+}
+
+export async function getRecommendedListings(params?: {
+  page?: number;
+  limit?: number;
+}) {
+  return {
+    data: MOCK_RECOMMENDED_LISTINGS,
+    meta: {
+      total: MOCK_RECOMMENDED_LISTINGS.length,
+      page: 1,
+      limit: MOCK_RECOMMENDED_LISTINGS.length,
+      totalPages: 1,
+    },
+  };
 }
 
 export async function getListingById(id: string) {
-  try {
-    const response = await api.get<PropertyListing>(`/listings/${id}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching listing ${id}:`, error);
-    throw error;
+  const all = [...MOCK_LISTINGS];
+  const found = all.find((item) => item.id === String(id));
+
+  if (!found) {
+    throw new Error("Imóvel não encontrado");
   }
+<<<<<<< HEAD
 }
 
 export interface SimulationResult {
@@ -124,3 +281,8 @@ export async function deleteFavorite(listingId: string) {
     throw error;
   }
 }
+=======
+
+  return found;
+}
+>>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)

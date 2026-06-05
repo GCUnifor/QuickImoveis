@@ -7,7 +7,6 @@ import {
   SafeAreaView,
   TouchableOpacity,
   TextInput,
-  Dimensions,
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
@@ -19,32 +18,59 @@ import { Image } from "expo-image";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useProperties } from "@/context/PropertyContext";
+<<<<<<< HEAD
 import { useAuth } from "@/context/AuthContext";
 import { getListings, PropertyListing } from "@/services/listings";
+=======
+import {
+  getListings,
+  getRecommendedListings,
+  PropertyListing,
+} from "@/services/listings";
+>>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
 
-const { width } = Dimensions.get("window");
+type FeedMode = "all" | "recommended";
 
-const HomeHeader = React.memo(({ 
-  searchQuery, 
-  setSearchQuery, 
-  selectedFilter, 
-  setSelectedFilter 
-}: {
-  searchQuery: string;
-  setSearchQuery: (t: string) => void;
-  selectedFilter: string;
-  setSelectedFilter: (t: string) => void;
-}) => (
-  <>
-    {/* Header Section */}
-    <View style={styles.blueHeader}>
-      <View style={styles.headerTop}>
-        <View>
-          <Text style={styles.greetingText}>Olá, Diego</Text>
-          <Text style={styles.welcomeText}>Encontre seu imóvel</Text>
+const HomeHeader = React.memo(
+  ({
+    searchQuery,
+    setSearchQuery,
+    selectedFilter,
+    setSelectedFilter,
+    feedMode,
+    setFeedMode,
+  }: {
+    searchQuery: string;
+    setSearchQuery: (t: string) => void;
+    selectedFilter: string;
+    setSelectedFilter: (t: string) => void;
+    feedMode: FeedMode;
+    setFeedMode: (mode: FeedMode) => void;
+  }) => (
+    <>
+      <View style={styles.blueHeader}>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.greetingText}>Olá</Text>
+            <Text style={styles.welcomeText}>Encontre seu imóvel</Text>
+          </View>
+        </View>
+
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Feather name="search" size={20} color="#6B7280" />
+            <TextInput
+              placeholder="Buscar por cidade..."
+              placeholderTextColor="#94A3B8"
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
         </View>
       </View>
 
+<<<<<<< HEAD
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
@@ -69,35 +95,98 @@ const HomeHeader = React.memo(({
         keyExtractor={(item) => item}
         contentContainerStyle={styles.filterScroll}
         renderItem={({ item: filter }) => (
+=======
+      <View style={styles.whiteBackground}>
+        <View style={styles.toggleRow}>
+>>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
           <TouchableOpacity
             style={[
-              styles.filterChip,
-              selectedFilter === filter && styles.activeFilterChip,
+              styles.toggleButton,
+              feedMode === "all" && styles.toggleButtonActive,
             ]}
-            onPress={() => setSelectedFilter(filter)}
+            onPress={() => setFeedMode("all")}
           >
             <Text
               style={[
-                styles.filterText,
-                selectedFilter === filter && styles.activeFilterText,
+                styles.toggleButtonText,
+                feedMode === "all" && styles.toggleButtonTextActive,
               ]}
             >
-              {filter}
+              Todos os imóveis
             </Text>
           </TouchableOpacity>
-        )}
-      />
 
-      {/* Featured Section */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Destaques para você</Text>
+          <TouchableOpacity
+            style={[
+              styles.toggleButton,
+              feedMode === "recommended" && styles.toggleButtonActive,
+            ]}
+            onPress={() => setFeedMode("recommended")}
+          >
+            <Feather
+              name="star"
+              size={16}
+              color={feedMode === "recommended" ? "#FFFFFF" : "#0A73D9"}
+            />
+            <Text
+              style={[
+                styles.toggleButtonText,
+                feedMode === "recommended" && styles.toggleButtonTextActive,
+              ]}
+            >
+              Recomendados
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={["Todos", "Apartamento", "Casa", "Terreno", "Comercial"]}
+          keyExtractor={(item) => item}
+          contentContainerStyle={styles.filterScroll}
+          renderItem={({ item: filter }) => (
+            <TouchableOpacity
+              style={[
+                styles.filterChip,
+                selectedFilter === filter && styles.activeFilterChip,
+              ]}
+              onPress={() => setSelectedFilter(filter)}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  selectedFilter === filter && styles.activeFilterText,
+                ]}
+              >
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {feedMode === "recommended"
+              ? "Imóveis recomendados para você"
+              : "Destaques para você"}
+          </Text>
+        </View>
       </View>
-    </View>
-  </>
-));
+    </>
+  )
+);
+
+function formatPrice(price: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(price);
+}
 
 export default function HomeScreen() {
   const router = useRouter();
+<<<<<<< HEAD
   const { isAuthenticated } = useAuth();
   const { 
     toggleFavorite, 
@@ -108,13 +197,18 @@ export default function HomeScreen() {
     renda, 
     entrada 
   } = useProperties();
+=======
+  const { toggleFavorite, isFavorite } = useProperties();
+>>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
 
   const [selectedFilter, setSelectedFilter] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
+  const [feedMode, setFeedMode] = useState<FeedMode>("all");
   const [listings, setListings] = useState<PropertyListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+<<<<<<< HEAD
   // States for simulate-financing modal
   const [showModal, setShowModal] = useState(false);
   const [rendaInput, setRendaInput] = useState("");
@@ -167,13 +261,40 @@ export default function HomeScreen() {
       setRefreshing(false);
     }
   }, [searchQuery]);
+=======
+  const fetchListings = useCallback(
+    async (isRefresh = false) => {
+      if (!isRefresh) setLoading(true);
+
+      try {
+        let response;
+
+        if (feedMode === "recommended") {
+          response = await getRecommendedListings();
+        } else {
+          response = await getListings({
+            city: searchQuery || undefined,
+          });
+        }
+
+        setListings(response.data);
+      } catch (error) {
+        console.log("Erro ao carregar imóveis:", error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [feedMode, searchQuery]
+  );
+>>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
 
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
+    const debounce = setTimeout(() => {
       fetchListings();
-    }, 500);
+    }, 300);
 
-    return () => clearTimeout(delayDebounceFn);
+    return () => clearTimeout(debounce);
   }, [fetchListings]);
 
   const onRefresh = useCallback(() => {
@@ -188,30 +309,37 @@ export default function HomeScreen() {
 
     return baseList.filter((p) => {
       const typeMap: Record<string, string> = {
-        'Apartamento': 'APARTAMENTO',
-        'Casa': 'CASA',
-        'Terreno': 'TERRENO',
-        'Comercial': 'COMERCIAL'
+        Apartamento: "APARTAMENTO",
+        Casa: "CASA",
+        Terreno: "TERRENO",
+        Comercial: "COMERCIAL",
       };
-      
+
       const matchesCategory =
         selectedFilter === "Todos" || p.property_type === typeMap[selectedFilter];
+<<<<<<< HEAD
       
       return matchesCategory;
     });
   }, [listings, selectedFilter, simulatedProperties]);
+=======
+>>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(price);
-  };
+      const matchesSearch =
+        !searchQuery ||
+        p.address?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.address?.neighborhood?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.title?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [listings, selectedFilter, searchQuery]);
 
   const renderProperty = ({ item: property }: { item: PropertyListing }) => {
-    const mainImage = property.images && property.images.length > 0 
-      ? property.images[0].image_url 
-      : "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1000&auto=format&fit=crop";
+    const mainImage =
+      property.images && property.images.length > 0
+        ? property.images[0].image_url
+        : "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1000&auto=format&fit=crop";
 
     const simInfo = simulatedProperties?.find(s => s.id_imovel === property.id);
 
@@ -227,6 +355,7 @@ export default function HomeScreen() {
               style={styles.propertyImage}
               contentFit="cover"
             />
+<<<<<<< HEAD
             {simInfo ? (
               <View style={[styles.statusBadge, { backgroundColor: '#10B981' }]}>
                 <Text style={styles.statusText}>Recomendado</Text>
@@ -237,17 +366,20 @@ export default function HomeScreen() {
               </View>
             )}
             <TouchableOpacity 
+=======
+
+            <TouchableOpacity
+>>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
               style={styles.favoriteBtn}
               onPress={(e) => {
                 e.stopPropagation();
                 toggleFavorite(property.id);
               }}
             >
-              <Feather 
-                name="heart" 
-                size={20} 
-                color={isFavorite(property.id) ? "#EF4444" : "#111827"} 
-                fill={isFavorite(property.id) ? "#EF4444" : "transparent"}
+              <Feather
+                name="heart"
+                size={20}
+                color={isFavorite(property.id) ? "#EF4444" : "#111827"}
               />
             </TouchableOpacity>
           </View>
@@ -258,12 +390,29 @@ export default function HomeScreen() {
               {property.title}
             </Text>
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
             <View style={styles.locationRow}>
               <Feather name="map-pin" size={14} color="#6B7280" />
               <Text style={styles.locationText}>
                 {`${property.address.neighborhood}, ${property.address.city} - ${property.address.state}`}
               </Text>
+            </View>
+
+            <View style={styles.specsRow}>
+              <View style={styles.specItemInline}>
+                <MaterialCommunityIcons name="bed-outline" size={20} color="#64748B" />
+                <Text style={styles.specText}>{property.bedrooms || 0} quartos</Text>
+              </View>
+
+              <View style={styles.specItemInline}>
+                <MaterialCommunityIcons name="ruler-square" size={20} color="#64748B" />
+                <Text style={styles.specText}>
+                  {property.area ? `${property.area}m²` : "0m²"}
+                </Text>
+              </View>
             </View>
           </View>
         </TouchableOpacity>
@@ -280,12 +429,15 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
             <>
-              <HomeHeader 
+              <HomeHeader
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 selectedFilter={selectedFilter}
                 setSelectedFilter={setSelectedFilter}
+                feedMode={feedMode}
+                setFeedMode={setFeedMode}
               />
+<<<<<<< HEAD
               
               {/* Simulation Banner */}
               {simulatedProperties && (
@@ -301,26 +453,42 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+=======
+>>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
 
               {loading && !refreshing && (
                 <View style={{ padding: 20 }}>
                   <ActivityIndicator size="large" color="#0A73D9" />
                 </View>
               )}
+
               {!loading && filteredProperties.length === 0 && (
-                <View style={{ padding: 40, alignItems: 'center' }}>
+                <View style={{ padding: 40, alignItems: "center" }}>
                   <Feather name="search" size={48} color="#CBD5E1" />
-                  <Text style={{ marginTop: 10, color: '#64748B', fontSize: 16 }}>Nenhum imóvel encontrado</Text>
+                  <Text
+                    style={{
+                      marginTop: 10,
+                      color: "#64748B",
+                      fontSize: 16,
+                      textAlign: "center",
+                    }}
+                  >
+                    Nenhum imóvel encontrado
+                  </Text>
                 </View>
               )}
             </>
           }
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0A73D9" />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#0A73D9"
+            />
           }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.flatListContent}
-          removeClippedSubviews={Platform.OS === 'android'}
+          removeClippedSubviews={Platform.OS === "android"}
           initialNumToRender={5}
           maxToRenderPerBatch={5}
           windowSize={10}
@@ -426,14 +594,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
   },
-  profileIconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   searchContainer: {
     marginTop: 10,
   },
@@ -458,8 +618,39 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -20,
-    paddingTop: 30,
+    paddingTop: 24,
     flex: 1,
+  },
+  toggleRow: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    gap: 10,
+    marginBottom: 18,
+  },
+  toggleButton: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    backgroundColor: "#EFF6FF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+  },
+  toggleButtonActive: {
+    backgroundColor: "#0A73D9",
+    borderColor: "#0A73D9",
+  },
+  toggleButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0A73D9",
+  },
+  toggleButtonTextActive: {
+    color: "#FFFFFF",
   },
   filterScroll: {
     paddingLeft: 20,
@@ -485,37 +676,6 @@ const styles = StyleSheet.create({
   activeFilterText: {
     color: "#FFFFFF",
   },
-  infoCardsRow: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    justifyContent: "space-between",
-    marginBottom: 35,
-  },
-  infoCard: {
-    flex: 0.48,
-    borderRadius: 20,
-    padding: 15,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  infoIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#BFDBFE",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1E293B",
-  },
-  infoSubtitle: {
-    fontSize: 12,
-    color: "#64748B",
-  },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -527,13 +687,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: "#111827",
-  },
-  seeAllText: {
-    color: "#0A73D9",
-    fontWeight: "600",
-  },
-  verticalFeed: {
-    paddingHorizontal: 20,
   },
   propertyCardVertical: {
     width: "100%",
@@ -556,20 +709,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  statusBadge: {
-    position: "absolute",
-    top: 15,
-    left: 15,
-    backgroundColor: "#0A73D9",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  statusText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
-  },
   favoriteBtn: {
     position: "absolute",
     top: 15,
@@ -588,7 +727,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
     color: "#111827",
-    marginBottom: 5,
+    marginBottom: 4,
   },
   propertyTitle: {
     fontSize: 16,
@@ -598,16 +737,31 @@ const styles = StyleSheet.create({
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 12,
   },
   locationText: {
     fontSize: 14,
     color: "#64748B",
     marginLeft: 5,
   },
+  specsRow: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  specItemInline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  specText: {
+    fontSize: 13,
+    color: "#64748B",
+  },
   flatListContent: {
     backgroundColor: "#F8FAFC",
     paddingBottom: 20,
   },
+<<<<<<< HEAD
   simulationBox: {
     backgroundColor: "#F0FDF4",
     padding: 12,
@@ -763,3 +917,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+=======
+});
+>>>>>>> fdf3e2ed (feat: adiciona alternancia entre todos os imoveis e recomendados no mobile)
