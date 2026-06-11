@@ -52,7 +52,7 @@ export default function TermsScreen() {
           <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Termos e Condições</Text>
-        <View style={{ width: 40 }} /> {/* Spacer */}
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
