@@ -60,3 +60,13 @@ export async function uploadPropertyImage(propertyId: string, imageUri: string) 
     throw new Error("Erro ao fazer upload da imagem. Verifique sua conexão e tente novamente.");
   }
 }
+
+export async function getMyProperties(params?: { page?: number; limit?: number }) {
+  try {
+    const response = await api.get("/property", { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching broker properties:", error);
+    throw error;
+  }
+}

@@ -21,6 +21,14 @@ export interface PropertyListing {
     image_url: string;
     sort_order: number;
   }[];
+  owner?: {
+    id: string;
+    name: string | null;
+    email: string;
+    creci: string | null;
+    phone: string | null;
+    whatsapp: string | null;
+  };
 }
 
 export interface ListingsResponse {

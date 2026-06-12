@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   SafeAreaView,
   TouchableOpacity,
   TextInput,
@@ -12,125 +11,103 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-  Dimensions,
+  ScrollView,
 } from "react-native";
-import { Image } from "expo-image";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { simulateFinancing, SimulationResult } from "@/services/listings";
 import { useProperties } from "@/context/PropertyContext";
-
-const { width } = Dimensions.get("window");
 
 export default function SimulatorScreen() {
   const router = useRouter();
-  const { toggleFavorite, isFavorite, runSimulation } = useProperties();
+  const { runSimulation, clearSimulation, renda, entrada: savedEntrada } = useProperties();
   
   const [rendaMensal, setRendaMensal] = useState("");
   const [entrada, setEntrada] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<SimulationResult[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
+
+  // Helper to format values as BRL currency (whole numbers)
+  const formatWholeCurrency = (text: string) => {
+    const clean = text.replace(/\D/g, "");
+    if (!clean) return "";
+    const parsed = parseInt(clean, 10);
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(parsed);
+  };
+
+  // Helper to parse currency back to a number
+  const parseWholeCurrency = (text: string) => {
+    const clean = text.replace(/\D/g, "");
+    return clean ? parseInt(clean, 10) : 0;
+  };
+
+  // Populate inputs with current simulation values on mount
+  useEffect(() => {
+    if (renda) {
+      setRendaMensal(formatWholeCurrency(String(renda)));
+    }
+    if (savedEntrada) {
+      setEntrada(formatWholeCurrency(String(savedEntrada)));
+    }
+  }, [renda, savedEntrada]);
+
+  const handleRendaChange = (text: string) => {
+    setRendaMensal(formatWholeCurrency(text));
+  };
+
+  const handleEntradaChange = (text: string) => {
+    setEntrada(formatWholeCurrency(text));
+  };
 
   const handleSimulate = async () => {
     Keyboard.dismiss();
-    const renda = parseFloat(rendaMensal.replace(/[^0-9.]/g, ''));
-    const valorEntrada = parseFloat(entrada.replace(/[^0-9.]/g, ''));
+    const rendaVal = parseWholeCurrency(rendaMensal);
+    const entradaVal = parseWholeCurrency(entrada);
 
-    if (isNaN(renda) || isNaN(valorEntrada) || renda <= 0 || valorEntrada <= 0) {
-      alert("Por favor, informe valores válidos maiores que zero.");
+    if (rendaVal <= 0) {
+      alert("Por favor, informe uma renda mensal maior que zero.");
+      return;
+    }
+
+    if (entradaVal < 0) {
+      alert("Por favor, informe um valor de entrada válido.");
       return;
     }
 
     setLoading(true);
-    setHasSearched(true);
     try {
-      await runSimulation(renda, valorEntrada);
-      alert("Simulação atualizada com sucesso!");
-      router.replace('/(tabs)');
+      await runSimulation(rendaVal, entradaVal);
+      alert("Filtro de renda Caixa atualizado!");
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (error) {
       console.error(error);
-      alert("Erro ao realizar a simulação. Verifique os dados ou tente novamente.");
+      alert("Erro ao salvar simulação. Tente novamente.");
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
+  const handleClear = () => {
+    Keyboard.dismiss();
+    clearSimulation();
+    setRendaMensal("");
+    setEntrada("");
+    alert("Simulação desativada e filtros limpos.");
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
-  const renderItem = ({ item }: { item: SimulationResult }) => {
-    const { property } = item;
-    const mainImage =
-      property.images && property.images.length > 0
-        ? property.images[0].image_url
-        : "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1000&auto=format&fit=crop";
-
-    return (
-      <View style={{ paddingHorizontal: 20 }}>
-        <TouchableOpacity
-          style={styles.propertyCardVertical}
-          onPress={() => router.push(`/details/${property.id}`)}
-        >
-          <View style={styles.cardImageContainer}>
-            <Image
-              source={{ uri: mainImage }}
-              style={styles.propertyImage}
-              contentFit="cover"
-            />
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>Recomendado</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.favoriteBtn}
-              onPress={(e) => {
-                e.stopPropagation();
-                toggleFavorite(property.id);
-              }}
-            >
-              <Feather
-                name="heart"
-                size={20}
-                color={isFavorite(property.id) ? "#EF4444" : "#111827"}
-              />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.cardInfo}>
-            <Text style={styles.priceText}>{formatCurrency(property.price)}</Text>
-            <Text style={styles.propertyTitle} numberOfLines={1}>
-              {property.title}
-            </Text>
-            
-            <View style={styles.simulationBox}>
-              <View style={styles.simulationRow}>
-                <Feather name="check-circle" size={14} color="#10B981" />
-                <Text style={styles.simulationTextBold}>
-                  Parcelas estimadas: {formatCurrency(item.valor_parcela_calculada)}
-                </Text>
-              </View>
-              <View style={styles.simulationRow}>
-                <Feather name="pie-chart" size={14} color="#6B7280" />
-                <Text style={styles.simulationText}>
-                  Compromete {item.percentual_renda_comprometido}% da renda
-                </Text>
-              </View>
-              <View style={styles.simulationRow}>
-                <Feather name="home" size={14} color="#6B7280" />
-                <Text style={styles.simulationText}>
-                  Valor financiado: {formatCurrency(item.valor_restante_apos_entrada)}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-    );
-  };
+  const hasActiveSimulation = renda !== null || savedEntrada !== null;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -151,98 +128,114 @@ export default function SimulatorScreen() {
                   }
                 }} 
                 style={styles.backBtn}
+                activeOpacity={0.7}
               >
-                <Feather name="x" size={24} color="#FFFFFF" />
+                <Feather name="arrow-left" size={24} color="#FFFFFF" />
               </TouchableOpacity>
-              <View>
-                <Text style={styles.welcomeText}>Simulador de Imóveis</Text>
-                <Text style={styles.greetingText}>Descubra o que cabe no seu bolso</Text>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.welcomeText}>Dados Financeiros</Text>
+                <Text style={styles.greetingText}>Configure seu perfil Caixa de financiamento</Text>
               </View>
             </View>
 
-            {/* Form */}
-            <View style={styles.formContainer}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Renda Mensal (R$)</Text>
-                <View style={styles.inputWrapper}>
-                  <Feather name="dollar-sign" size={20} color="#6B7280" />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ex: 5000"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="numeric"
-                    value={rendaMensal}
-                    onChangeText={setRendaMensal}
-                  />
+            <ScrollView 
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Form Card */}
+              <View style={styles.formContainer}>
+                <View style={styles.formInfoRow}>
+                  <MaterialCommunityIcons name="calculator-variant" size={28} color="#0A73D9" />
+                  <Text style={styles.formInfoTitle}>Simulador Inteligente</Text>
                 </View>
-              </View>
+                <Text style={styles.formInfoText}>
+                  Preencha as informações abaixo para que o aplicativo possa calcular automaticamente os imóveis que cabem no seu orçamento.
+                </Text>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Valor de Entrada (R$)</Text>
-                <View style={styles.inputWrapper}>
-                  <Feather name="briefcase" size={20} color="#6B7280" />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ex: 40000"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="numeric"
-                    value={entrada}
-                    onChangeText={setEntrada}
-                  />
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Renda Mensal (R$)</Text>
+                  <View style={styles.inputWrapper}>
+                    <Feather name="dollar-sign" size={20} color="#0A73D9" />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Ex: R$ 5.000"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="numeric"
+                      value={rendaMensal}
+                      onChangeText={handleRendaChange}
+                    />
+                    {rendaMensal.length > 0 && (
+                      <TouchableOpacity onPress={() => setRendaMensal("")}>
+                        <Feather name="x-circle" size={16} color="#94A3B8" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
-              </View>
 
-              <TouchableOpacity
-                style={styles.simulateBtn}
-                onPress={handleSimulate}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.simulateBtnText}>Simular Agora</Text>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Valor de Entrada (R$)</Text>
+                  <View style={styles.inputWrapper}>
+                    <Feather name="briefcase" size={20} color="#0A73D9" />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Ex: R$ 40.000"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="numeric"
+                      value={entrada}
+                      onChangeText={handleEntradaChange}
+                    />
+                    {entrada.length > 0 && (
+                      <TouchableOpacity onPress={() => setEntrada("")}>
+                        <Feather name="x-circle" size={16} color="#94A3B8" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.simulateBtn}
+                  onPress={handleSimulate}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Text style={styles.simulateBtnText}>Salvar e Atualizar</Text>
+                      <Feather name="check" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {hasActiveSimulation && (
+                  <TouchableOpacity
+                    style={styles.clearBtn}
+                    onPress={handleClear}
+                    disabled={loading}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.clearBtnText}>Limpar dados da simulação</Text>
+                    <Feather name="trash-2" size={16} color="#EF4444" style={{ marginLeft: 6 }} />
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
 
-              <TouchableOpacity
-                style={{ marginTop: 20, alignItems: 'center' }}
-                onPress={() => router.replace('/(tabs)')}
-              >
-                <Text style={{ color: '#64748B', fontWeight: 'bold' }}>Pular e ir para a tela inicial</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Results */}
-            <View style={styles.resultsContainer}>
-              {loading && results.length === 0 ? (
-                <View style={styles.centerBox}>
-                  <ActivityIndicator size="large" color="#0A73D9" />
-                  <Text style={styles.emptyText}>Calculando melhores opções...</Text>
-                </View>
-              ) : hasSearched && results.length === 0 ? (
-                <View style={styles.centerBox}>
-                  <Feather name="frown" size={48} color="#CBD5E1" />
-                  <Text style={styles.emptyText}>
-                    Nenhum imóvel recomendado para esses valores.
-                  </Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={results}
-                  renderItem={renderItem}
-                  keyExtractor={(item) => item.id_imovel}
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingBottom: 40, paddingTop: 10 }}
-                  ListHeaderComponent={
-                    results.length > 0 ? (
-                      <Text style={styles.resultsTitle}>
-                        {results.length} imóveis ideais para você:
-                      </Text>
-                    ) : null
-                  }
-                />
-              )}
-            </View>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => {
+                    if (router.canGoBack()) {
+                      router.back();
+                    } else {
+                      router.replace('/(tabs)');
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  <Text style={styles.cancelBtnText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -257,177 +250,137 @@ const styles = StyleSheet.create({
   },
   blueHeader: {
     backgroundColor: "#0A73D9",
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingTop: Platform.OS === "android" ? 40 : 20,
-    paddingBottom: 30,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
     flexDirection: "row",
     alignItems: "center",
   },
   backBtn: {
-    marginRight: 15,
-    padding: 5,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    marginRight: 16,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   greetingText: {
     color: "#E0F2FE",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "500",
+    marginTop: 2,
   },
   welcomeText: {
     color: "#FFFFFF",
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   formContainer: {
     backgroundColor: "#FFFFFF",
-    marginHorizontal: 20,
-    marginTop: -20,
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  formInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 8,
+  },
+  formInfoTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  formInfoText: {
+    fontSize: 13,
+    color: "#64748B",
+    lineHeight: 18,
+    marginBottom: 24,
   },
   inputGroup: {
-    marginBottom: 15,
+    marginBottom: 20,
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
-    color: "#475569",
+    color: "#334155",
     marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F1F5F9",
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    height: 50,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingHorizontal: 16,
+    height: 52,
   },
   input: {
     flex: 1,
     marginLeft: 10,
     fontSize: 15,
-    color: "#1E293B",
+    color: "#0F172A",
+    fontWeight: "500",
   },
   simulateBtn: {
     backgroundColor: "#0A73D9",
-    borderRadius: 12,
-    height: 50,
+    borderRadius: 14,
+    height: 52,
+    flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     marginTop: 10,
+    shadowColor: "#0A73D9",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
   },
   simulateBtnText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
   },
-  resultsContainer: {
-    flex: 1,
-    marginTop: 10,
-  },
-  resultsTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1E293B",
-    marginHorizontal: 20,
-    marginBottom: 15,
-  },
-  centerBox: {
-    flex: 1,
+  clearBtn: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#FEE2E2",
+    backgroundColor: "#FFF8F8",
+    borderRadius: 14,
+    height: 52,
     justifyContent: "center",
     alignItems: "center",
-    padding: 40,
+    marginTop: 12,
   },
-  emptyText: {
-    marginTop: 15,
+  clearBtnText: {
+    color: "#EF4444",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  cancelBtn: {
+    height: 48,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 16,
+  },
+  cancelBtnText: {
     color: "#64748B",
     fontSize: 15,
-    textAlign: "center",
-  },
-  propertyCardVertical: {
-    width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    marginBottom: 20,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  cardImageContainer: {
-    height: 180,
-    backgroundColor: "#E2E8F0",
-  },
-  propertyImage: {
-    width: "100%",
-    height: "100%",
-  },
-  statusBadge: {
-    position: "absolute",
-    top: 15,
-    left: 15,
-    backgroundColor: "#10B981",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  statusText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  favoriteBtn: {
-    position: "absolute",
-    top: 15,
-    right: 15,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#FFFFFFEE",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardInfo: {
-    padding: 15,
-  },
-  priceText: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 5,
-  },
-  propertyTitle: {
-    fontSize: 15,
-    color: "#475569",
-    marginBottom: 10,
-  },
-  simulationBox: {
-    backgroundColor: "#F0FDF4",
-    padding: 10,
-    borderRadius: 10,
-    gap: 6,
-  },
-  simulationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  simulationTextBold: {
-    fontSize: 13,
-    color: "#065F46",
-    fontWeight: "700",
-  },
-  simulationText: {
-    fontSize: 12,
-    color: "#475569",
+    fontWeight: "600",
   },
 });

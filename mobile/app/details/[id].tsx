@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions, Platform, ActivityIndicator, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
@@ -291,12 +291,19 @@ export default function PropertyDetailsScreen() {
           <View style={styles.brokerCard}>
             <Image source="https://i.pravatar.cc/150?u=diego" style={styles.brokerImg} />
             <View style={styles.brokerInfo}>
-              <Text style={styles.brokerName}>Diego Ribeiro</Text>
-              <Text style={styles.brokerRole}>Corretor Especialista</Text>
+              <Text style={styles.brokerName}>{property.owner?.name || 'Corretor'}</Text>
+              <Text style={styles.brokerRole}>
+                {property.owner?.creci ? `CRECI: ${property.owner.creci}` : 'Corretor Especialista'}
+              </Text>
             </View>
-            <TouchableOpacity style={styles.chatBtn}>
-              <Feather name="message-square" size={20} color="#0A73D9" />
-            </TouchableOpacity>
+            {property.owner?.email && (
+              <TouchableOpacity 
+                style={styles.chatBtn}
+                onPress={() => Linking.openURL(`mailto:${property.owner?.email}`)}
+              >
+                <Feather name="mail" size={20} color="#0A73D9" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -305,11 +312,32 @@ export default function PropertyDetailsScreen() {
 
       {/* Floating Bottom Bar */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.callBtn}>
+        <TouchableOpacity 
+          style={styles.callBtn}
+          onPress={() => {
+            const phone = property.owner?.phone;
+            if (phone) {
+              Linking.openURL(`tel:${phone}`);
+            } else {
+              alert("Telefone do corretor não disponível.");
+            }
+          }}
+        >
           <Feather name="phone" size={20} color="#0A73D9" />
           <Text style={styles.callBtnText}>Ligar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.whatsappBtn}>
+        <TouchableOpacity 
+          style={styles.whatsappBtn}
+          onPress={() => {
+            const wa = property.owner?.whatsapp || property.owner?.phone;
+            if (wa) {
+              const cleanWa = wa.replace(/\D/g, "");
+              Linking.openURL(`https://wa.me/${cleanWa}`);
+            } else {
+              alert("WhatsApp do corretor não disponível.");
+            }
+          }}
+        >
           <FontAwesome5 name="whatsapp" size={20} color="#FFF" />
           <Text style={styles.whatsappBtnText}>Conversar no WhatsApp</Text>
         </TouchableOpacity>
