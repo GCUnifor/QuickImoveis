@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions, Platform, ActivityIndicator, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
@@ -11,9 +11,16 @@ const { width } = Dimensions.get('window');
 export default function PropertyDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { toggleFavorite, isFavorite } = useProperties();
+  const { toggleFavorite, isFavorite, renda, entrada } = useProperties();
   const [property, setProperty] = useState<PropertyListing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const handleScroll = (event: any) => {
+    const scrollPosition = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollPosition / width);
+    setCurrentImageIndex(index);
+  };
 
   useEffect(() => {
     if (id) {
@@ -55,12 +62,58 @@ export default function PropertyDetailsScreen() {
     }).format(price);
   };
 
+  const hasActiveSimulation = renda !== null && entrada !== null;
+
+  // Entrada default is 20% of the price
+  const priceVal = property.price;
+  const standardEntrada = priceVal * 0.2;
+
+  // Use values from active simulation if available
+  const simEntrada = hasActiveSimulation ? (entrada ?? standardEntrada) : standardEntrada;
+  const simRenda = hasActiveSimulation ? (renda ?? 0) : 0;
+
+  // Calculate financing
+  const calculateFinancing = (price: number, entradaVal: number, rendaVal: number) => {
+    const prazo = 360; // 30 years
+    const taxaAnual = (rendaVal > 0 && rendaVal <= 4700) ? 8.35 : 10.3;
+    const taxaMensal = taxaAnual / 100 / 12;
+    const valorFinanciado = Math.max(price - entradaVal, 0);
+    const parcela = valorFinanciado > 0
+      ? (valorFinanciado * (taxaMensal * Math.pow(1 + taxaMensal, prazo))) / 
+        (Math.pow(1 + taxaMensal, prazo) - 1)
+      : 0;
+
+    return {
+      parcela,
+      entrada: entradaVal,
+      valorFinanciado,
+      taxaAnual,
+      prazo,
+      renda: rendaVal,
+    };
+  };
+
+  const calculatedFinancing = calculateFinancing(priceVal, simEntrada, simRenda);
+
+  const isEntradaInsuficiente = simEntrada < standardEntrada;
+  const isRendaInsuficiente = simRenda > 0 && (calculatedFinancing.parcela / simRenda) > 0.3;
+
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Image Carrousel Area */}
         <View style={styles.imageContainer}>
-          <Image source={images[0]} style={styles.mainImage} contentFit="cover" />
+          <ScrollView 
+            horizontal 
+            pagingEnabled 
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          >
+            {images.map((img, index) => (
+              <Image key={index} source={img} style={{ width, height: 350 }} contentFit="contain" />
+            ))}
+          </ScrollView>
           
           <SafeAreaView style={styles.headerActions}>
             <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()}>
@@ -85,12 +138,33 @@ export default function PropertyDetailsScreen() {
           </SafeAreaView>
 
           <View style={styles.imageCount}>
-            <Text style={styles.imageCountText}>1 / {images.length}</Text>
+            <Text style={styles.imageCountText}>{currentImageIndex + 1} / {images.length}</Text>
           </View>
         </View>
 
         <View style={styles.detailsContainer}>
-          <Text style={styles.price}>{formatPrice(property.price)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+            <Text style={styles.price}>{formatPrice(property.price)}</Text>
+            {property.status && (
+              <View style={[
+                styles.statusBadgeDetail, 
+                property.status === 'DISPONIVEL' && { backgroundColor: '#E6F4EA' },
+                property.status === 'VENDIDO' && { backgroundColor: '#FEE2E2' },
+                property.status === 'EM_NEGOCIACAO' && { backgroundColor: '#FEF3C7' },
+              ]}>
+                <Text style={[
+                  styles.statusTextDetail,
+                  property.status === 'DISPONIVEL' && { color: '#137333' },
+                  property.status === 'VENDIDO' && { color: '#DC2626' },
+                  property.status === 'EM_NEGOCIACAO' && { color: '#D97706' },
+                ]}>
+                  {property.status === 'DISPONIVEL' ? 'Disponível' : 
+                   property.status === 'VENDIDO' ? 'Vendido' : 
+                   property.status === 'EM_NEGOCIACAO' ? 'Em negociação' : property.status}
+                </Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.title}>{property.title}</Text>
           
           <View style={styles.addressRow}>
@@ -98,6 +172,85 @@ export default function PropertyDetailsScreen() {
             <Text style={styles.addressText}>
               {`${property.address.street}, ${property.address.number ? property.address.number + ', ' : ''}${property.address.neighborhood}, ${property.address.city} - ${property.address.state}`}
             </Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Caixa Financing Simulator Card */}
+          <View style={styles.simulatorCard}>
+            <View style={styles.simulatorHeader}>
+              <MaterialCommunityIcons name="calculator" size={24} color="#0A73D9" />
+              <Text style={styles.simulatorTitle}>Financiamento Caixa</Text>
+            </View>
+            
+            <View style={styles.simulatorContent}>
+              <Text style={styles.simulatorInstallment}>
+                {formatPrice(calculatedFinancing.parcela)}
+                <Text style={styles.simulatorPeriod}> /mês</Text>
+              </Text>
+              
+              <Text style={styles.simulatorSubtitle}>
+                {hasActiveSimulation 
+                  ? `Simulação baseada na sua renda (R$ ${renda?.toLocaleString('pt-BR')})`
+                  : "Valor estimado com 20% de entrada e prazo de 30 anos"}
+              </Text>
+
+              {/* Details grid */}
+              <View style={styles.simDetailsGrid}>
+                <View style={styles.simDetailItem}>
+                  <Text style={styles.simDetailLabel}>Entrada</Text>
+                  <Text style={styles.simDetailValue}>{formatPrice(calculatedFinancing.entrada)}</Text>
+                </View>
+                <View style={styles.simDetailItem}>
+                  <Text style={styles.simDetailLabel}>Valor financiado</Text>
+                  <Text style={styles.simDetailValue}>{formatPrice(calculatedFinancing.valorFinanciado)}</Text>
+                </View>
+                <View style={styles.simDetailItem}>
+                  <Text style={styles.simDetailLabel}>Prazo / Juros</Text>
+                  <Text style={styles.simDetailValue}>
+                    {calculatedFinancing.prazo} meses a {calculatedFinancing.taxaAnual}% a.a.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Warnings if any */}
+              {hasActiveSimulation && isEntradaInsuficiente && (
+                <View style={styles.warningBox}>
+                  <Feather name="alert-triangle" size={16} color="#D93025" style={{ marginTop: 2 }} />
+                  <Text style={styles.warningText}>
+                    Entrada simulada (R$ {entrada?.toLocaleString('pt-BR')}) é menor que os 20% mínimos recomendados (R$ {standardEntrada.toLocaleString('pt-BR')}).
+                  </Text>
+                </View>
+              )}
+
+              {hasActiveSimulation && isRendaInsuficiente && (
+                <View style={styles.warningBox}>
+                  <Feather name="alert-triangle" size={16} color="#D93025" style={{ marginTop: 2 }} />
+                  <Text style={styles.warningText}>
+                    A parcela excede 30% da sua renda mensal.
+                  </Text>
+                </View>
+              )}
+
+              {hasActiveSimulation && !isEntradaInsuficiente && !isRendaInsuficiente && (
+                <View style={[styles.warningBox, { backgroundColor: '#E6F4EA', borderColor: '#A3E635' }]}>
+                  <Feather name="check-circle" size={16} color="#137333" style={{ marginTop: 2 }} />
+                  <Text style={[styles.warningText, { color: '#137333' }]}>
+                    Este imóvel se enquadra no seu perfil financeiro!
+                  </Text>
+                </View>
+              )}
+
+              {/* Re-simulate Button */}
+              <TouchableOpacity 
+                style={styles.simActionButton}
+                onPress={() => router.push('/simulator')}
+              >
+                <Text style={styles.simActionButtonText}>
+                  {hasActiveSimulation ? "Alterar dados da simulação" : "Simular com minha renda"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.divider} />
@@ -138,23 +291,20 @@ export default function PropertyDetailsScreen() {
           <View style={styles.brokerCard}>
             <Image source="https://i.pravatar.cc/150?u=diego" style={styles.brokerImg} />
             <View style={styles.brokerInfo}>
-              <Text style={styles.brokerName}>Diego Ribeiro</Text>
-              <Text style={styles.brokerRole}>Corretor Especialista</Text>
+              <Text style={styles.brokerName}>{property.owner?.name || 'Corretor'}</Text>
+              <Text style={styles.brokerRole}>
+                {property.owner?.creci ? `CRECI: ${property.owner.creci}` : 'Corretor Especialista'}
+              </Text>
             </View>
-            <TouchableOpacity style={styles.chatBtn}>
-              <Feather name="message-square" size={20} color="#0A73D9" />
-            </TouchableOpacity>
+            {property.owner?.email && (
+              <TouchableOpacity 
+                style={styles.chatBtn}
+                onPress={() => Linking.openURL(`mailto:${property.owner?.email}`)}
+              >
+                <Feather name="mail" size={20} color="#0A73D9" />
+              </TouchableOpacity>
+            )}
           </View>
-
-          {/* Financing Simulator Placeholder */}
-          <TouchableOpacity style={styles.simulatorCard}>
-            <MaterialCommunityIcons name="calculator" size={24} color="#0A73D9" />
-            <View style={styles.simulatorText}>
-              <Text style={styles.simulatorTitle}>Simular Financiamento</Text>
-              <Text style={styles.simulatorSub}>Veja as parcelas estimadas</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color="#64748B" />
-          </TouchableOpacity>
         </View>
 
         <View style={{ height: 100 }} />
@@ -162,11 +312,32 @@ export default function PropertyDetailsScreen() {
 
       {/* Floating Bottom Bar */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.callBtn}>
+        <TouchableOpacity 
+          style={styles.callBtn}
+          onPress={() => {
+            const phone = property.owner?.phone;
+            if (phone) {
+              Linking.openURL(`tel:${phone}`);
+            } else {
+              alert("Telefone do corretor não disponível.");
+            }
+          }}
+        >
           <Feather name="phone" size={20} color="#0A73D9" />
           <Text style={styles.callBtnText}>Ligar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.whatsappBtn}>
+        <TouchableOpacity 
+          style={styles.whatsappBtn}
+          onPress={() => {
+            const wa = property.owner?.whatsapp || property.owner?.phone;
+            if (wa) {
+              const cleanWa = wa.replace(/\D/g, "");
+              Linking.openURL(`https://wa.me/${cleanWa}`);
+            } else {
+              alert("WhatsApp do corretor não disponível.");
+            }
+          }}
+        >
           <FontAwesome5 name="whatsapp" size={20} color="#FFF" />
           <Text style={styles.whatsappBtnText}>Conversar no WhatsApp</Text>
         </TouchableOpacity>
@@ -186,6 +357,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     height: 350,
     position: 'relative',
+    backgroundColor: '#E2E8F0',
   },
   mainImage: {
     width: '100%',
@@ -218,7 +390,7 @@ const styles = StyleSheet.create({
   },
   imageCount: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 40,
     right: 20,
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: 12,
@@ -235,7 +407,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    marginTop: -30,
+    marginTop: -20,
   },
   price: {
     fontSize: 28,
@@ -329,25 +501,94 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   simulatorCard: {
+    backgroundColor: '#EFF6FF',
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#DBEAFE',
+    marginTop: 10,
+  },
+  simulatorHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    padding: 16,
-    borderRadius: 20,
-    marginTop: 16,
-  },
-  simulatorText: {
-    flex: 1,
-    marginLeft: 16,
+    gap: 10,
+    marginBottom: 15,
   },
   simulatorTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1E293B',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E40AF',
   },
-  simulatorSub: {
+  simulatorContent: {
+    gap: 12,
+  },
+  simulatorInstallment: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#1E3A8A',
+  },
+  simulatorPeriod: {
+    fontSize: 14,
+    color: '#60A5FA',
+    fontWeight: '600',
+  },
+  simulatorSubtitle: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
+  },
+  simDetailsGrid: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 5,
+  },
+  simDetailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  simDetailLabel: {
     fontSize: 13,
     color: '#64748B',
+  },
+  simDetailValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 5,
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#B91C1C',
+    flex: 1,
+    lineHeight: 16,
+  },
+  simActionButton: {
+    backgroundColor: '#0A73D9',
+    borderRadius: 14,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  simActionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   bottomBar: {
     position: 'absolute',
@@ -398,5 +639,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFF',
     marginLeft: 10,
+  },
+  statusBadgeDetail: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  statusTextDetail: {
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

@@ -1,50 +1,82 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, ScrollView, Dimensions, Modal, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, ScrollView, Dimensions, Modal, TouchableWithoutFeedback, Keyboard, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useProperties } from '@/context/PropertyContext';
+import { getListings, PropertyListing } from '@/services/listings';
 
 const { width } = Dimensions.get('window');
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { properties, toggleFavorite, isFavorite } = useProperties();
+  const { toggleFavorite, isFavorite } = useProperties();
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [selectedType, setSelectedType] = React.useState('Todos');
   const [isFilterModalVisible, setIsFilterModalVisible] = React.useState(false);
   const [selectedCategory, setSelectedCategory] = React.useState('Todas');
   const [selectedBedrooms, setSelectedBedrooms] = React.useState('Qualquer');
   const [selectedBathrooms, setSelectedBathrooms] = React.useState('Qualquer');
 
-  const filteredProperties = properties.filter(item => {
+  const [listings, setListings] = React.useState<PropertyListing[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const fetchListingsData = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await getListings({ limit: 100 });
+      setListings(res.data);
+    } catch (error) {
+      console.error("Error loading listings in search page:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchListingsData();
+  }, [fetchListingsData]);
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(price);
+  };
+
+  const formatType = (type: string) => {
+    const map: Record<string, string> = {
+      'APARTAMENTO': 'Apartamento',
+      'CASA': 'Casa',
+      'TERRENO': 'Terreno',
+      'COMERCIAL': 'Comercial'
+    };
+    return map[type] || type;
+  };
+
+  const filteredProperties = listings.filter(item => {
     const matchesSearch = 
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesType = 
-      selectedType === 'Todos' || 
-      (selectedType === 'Comprar' && item.type === 'Venda') ||
-      (selectedType === 'Alugar' && item.type === 'Aluguel');
+      (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.address?.city && item.address.city.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.address?.neighborhood && item.address.neighborhood.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.property_type && item.property_type.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesCategory = selectedCategory === 'Todas' || item.category === selectedCategory;
+    const typeMap: Record<string, string> = {
+      'Apartamento': 'APARTAMENTO',
+      'Casa': 'CASA',
+      'Terreno': 'TERRENO',
+      'Comercial': 'COMERCIAL'
+    };
+    const matchesCategory = selectedCategory === 'Todas' || item.property_type === typeMap[selectedCategory];
     
-    const itemBeds = parseInt(item.bedrooms || '2');
+    const itemBeds = item.bedrooms || 0;
     let matchesBeds = true;
     if (selectedBedrooms !== 'Qualquer') {
       if (selectedBedrooms === '4+') matchesBeds = itemBeds >= 4;
       else matchesBeds = itemBeds === parseInt(selectedBedrooms);
     }
 
-    const itemBaths = parseInt(item.bathrooms || '2');
-    let matchesBaths = true;
-    if (selectedBathrooms !== 'Qualquer') {
-      if (selectedBathrooms === '4+') matchesBaths = itemBaths >= 4;
-      else matchesBaths = itemBaths === parseInt(selectedBathrooms);
-    }
-
-    return matchesSearch && matchesType && matchesCategory && matchesBeds && matchesBaths;
+    return matchesSearch && matchesCategory && matchesBeds;
   });
 
   return (
@@ -66,78 +98,91 @@ export default function SearchScreen() {
               <MaterialCommunityIcons name="filter-variant" size={24} color="#1E293B" />
             </TouchableOpacity>
           </View>
-
-          <View style={styles.chipRow}>
-            {['Todos', 'Comprar', 'Alugar'].map((chip) => (
-              <TouchableOpacity 
-                key={chip} 
-                style={[styles.chip, selectedType === chip && styles.activeChip]}
-                onPress={() => setSelectedType(chip)}
-              >
-                <Text style={[styles.chipText, selectedType === chip && styles.activeChipText]}>{chip}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.listContent}>
-          <Text style={styles.resultsText}>{filteredProperties.length} imóveis encontrados</Text>
-          
-          {filteredProperties.map((item) => (
-            <TouchableOpacity 
-              key={item.id} 
-              style={styles.card}
-              onPress={() => router.push(`/details/${item.id}`)}
-            >
-              <View style={styles.imageContainer}>
-                <Image source={item.image} style={styles.image} contentFit="cover" />
-                <TouchableOpacity 
-                  style={styles.heartBtn}
-                  onPress={() => toggleFavorite(item.id)}
-                >
-                  <Feather 
-                    name="heart" 
-                    size={20} 
-                    color={isFavorite(item.id) ? "#EF4444" : "#1E293B"} 
-                    fill={isFavorite(item.id) ? "#EF4444" : "transparent"}
-                  />
-                </TouchableOpacity>
-                <View style={styles.badgesRow}>
-                  <View style={[styles.badge, { backgroundColor: '#0A73D9' }]}>
-                    <Text style={styles.badgeText}>{item.type}</Text>
-                  </View>
-                  <View style={[styles.badge, { backgroundColor: '#F1F5F9' }]}>
-                    <Text style={[styles.badgeText, { color: '#1E293B' }]}>{item.category}</Text>
-                  </View>
-                </View>
-              </View>
+        {loading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#0A73D9" />
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.listContent}>
+            <Text style={styles.resultsText}>{filteredProperties.length} imóveis encontrados</Text>
+            
+            {filteredProperties.map((item) => {
+              const mainImage = item.images && item.images.length > 0 
+                ? item.images[0].image_url 
+                : "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1000&auto=format&fit=crop";
 
-              <View style={styles.info}>
-                <Text style={styles.price}>{item.price}</Text>
-                <Text style={styles.title}>{item.title}</Text>
-                <View style={styles.locationRow}>
-                  <Feather name="map-pin" size={14} color="#64748B" />
-                  <Text style={styles.locationText}>{item.location}</Text>
-                </View>
-                
-                <View style={styles.specsRow}>
-                  <View style={styles.spec}>
-                    <MaterialCommunityIcons name="bed-outline" size={18} color="#64748B" />
-                    <Text style={styles.specText}>{item.bedrooms || '2'} quartos</Text>
+              return (
+                <TouchableOpacity 
+                  key={item.id} 
+                  style={styles.card}
+                  onPress={() => router.push(`/details/${item.id}`)}
+                >
+                  <View style={styles.imageContainer}>
+                    <Image source={mainImage} style={styles.image} contentFit="cover" />
+                    <TouchableOpacity 
+                      style={styles.heartBtn}
+                      onPress={() => toggleFavorite(item.id)}
+                    >
+                      <Feather 
+                        name="heart" 
+                        size={20} 
+                        color={isFavorite(item.id) ? "#EF4444" : "#1E293B"} 
+                        fill={isFavorite(item.id) ? "#EF4444" : "transparent"}
+                      />
+                    </TouchableOpacity>
+                    <View style={styles.badgesRow}>
+                      {item.status === 'VENDIDO' ? (
+                        <View style={[styles.badge, { backgroundColor: '#94A3B8' }]}>
+                          <Text style={styles.badgeText}>Vendido</Text>
+                        </View>
+                      ) : item.status === 'EM_NEGOCIACAO' ? (
+                        <View style={[styles.badge, { backgroundColor: '#F59E0B' }]}>
+                          <Text style={styles.badgeText}>Em negociação</Text>
+                        </View>
+                      ) : (
+                        <View style={[styles.badge, { backgroundColor: '#0A73D9' }]}>
+                          <Text style={styles.badgeText}>Venda</Text>
+                        </View>
+                      )}
+                      <View style={[styles.badge, { backgroundColor: '#F1F5F9' }]}>
+                        <Text style={[styles.badgeText, { color: '#1E293B' }]}>{formatType(item.property_type)}</Text>
+                      </View>
+                    </View>
                   </View>
-                  <View style={styles.spec}>
-                    <MaterialCommunityIcons name="shower" size={18} color="#64748B" />
-                    <Text style={styles.specText}>{item.bathrooms || '2'}</Text>
+
+                  <View style={styles.info}>
+                    <Text style={styles.price}>{formatPrice(item.price)}</Text>
+                    <Text style={styles.title}>{item.title}</Text>
+                    <View style={styles.locationRow}>
+                      <Feather name="map-pin" size={14} color="#64748B" />
+                      <Text style={styles.locationText}>
+                        {`${item.address.neighborhood}, ${item.address.city} - ${item.address.state}`}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.specsRow}>
+                      <View style={styles.spec}>
+                        <MaterialCommunityIcons name="bed-outline" size={18} color="#64748B" />
+                        <Text style={styles.specText}>{item.bedrooms || '0'} quartos</Text>
+                      </View>
+                      <View style={styles.spec}>
+                        <MaterialCommunityIcons name="shower" size={18} color="#64748B" />
+                        <Text style={styles.specText}>1 banheiros</Text>
+                      </View>
+                      <View style={styles.spec}>
+                        <MaterialCommunityIcons name="ruler-square" size={18} color="#64748B" />
+                        <Text style={styles.specText}>{item.area ? `${item.area}m²` : '0m²'}</Text>
+                      </View>
+                    </View>
                   </View>
-                  <View style={styles.spec}>
-                    <MaterialCommunityIcons name="ruler-square" size={18} color="#64748B" />
-                    <Text style={styles.specText}>{item.area || '75m²'}</Text>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
 
         <Modal
           visible={isFilterModalVisible}
@@ -158,7 +203,7 @@ export default function SearchScreen() {
                 <ScrollView showsVerticalScrollIndicator={false}>
                   <Text style={styles.filterSectionTitle}>Categoria</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-                    {['Todas', 'Casa', 'Apartamento', 'Terreno', 'Comercial'].map(cat => (
+                    {['Todas', 'Apartamento', 'Casa'].map(cat => (
                       <TouchableOpacity
                         key={cat}
                         style={[styles.filterOptionBtn, selectedCategory === cat && styles.filterOptionBtnActive]}

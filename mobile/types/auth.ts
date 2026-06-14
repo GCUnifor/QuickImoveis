@@ -22,6 +22,8 @@ export interface SignUpPayload {
   email: string;
   password?: string;
   role: 'COMPRADOR' | 'CORRETOR';
+  creci?: string;
+  phone?: string;
 }
 
 export interface ForgotPasswordPayload {

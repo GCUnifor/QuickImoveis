@@ -1,51 +1,89 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useProperties } from '@/context/PropertyContext';
+import { getFavorites, PropertyListing } from '@/services/listings';
 
 export default function FavoritesScreen() {
   const router = useRouter();
-  const { properties, favorites, toggleFavorite, isFavorite } = useProperties();
+  const { toggleFavorite } = useProperties();
+  const [favoriteProperties, setFavoriteProperties] = useState<PropertyListing[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filter properties that are in the favorites list
-  const favoriteProperties = properties.filter(p => favorites.includes(p.id));
+  const fetchFavorites = useCallback(async () => {
+    try {
+      const res = await getFavorites({ page: 1, limit: 100 });
+      setFavoriteProperties(res.data);
+    } catch (error) {
+      console.error("Failed to fetch favorites:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={styles.card}
-      onPress={() => router.push(`/details/${item.id}`)}
-    >
-      <Image source={item.image} style={styles.image} contentFit="cover" />
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{item.type}</Text>
-      </View>
-      <TouchableOpacity 
-        style={styles.favoriteBtn}
-        onPress={(e) => {
-          e.stopPropagation();
-          toggleFavorite(item.id);
-        }}
-      >
-        <Feather 
-          name="heart" 
-          size={20} 
-          color="#EF4444" 
-          fill="#EF4444" 
-        />
-      </TouchableOpacity>
-      
-      <View style={styles.info}>
-        <Text style={styles.price}>{item.price}</Text>
-        <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-        <View style={styles.locationRow}>
-          <Feather name="map-pin" size={14} color="#64748B" />
-          <Text style={styles.locationText}>{item.location}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+  useFocusEffect(
+    useCallback(() => {
+      fetchFavorites();
+    }, [fetchFavorites])
   );
+
+  const handleRemoveFavorite = async (id: string) => {
+    // Optimistic UI update
+    setFavoriteProperties(prev => prev.filter(p => p.id !== id));
+    await toggleFavorite(id);
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(price);
+  };
+
+  const renderItem = ({ item }: { item: PropertyListing }) => {
+    const mainImage = item.images && item.images.length > 0 
+      ? item.images[0].image_url 
+      : "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1000&auto=format&fit=crop";
+
+    return (
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={() => router.push(`/details/${item.id}`)}
+      >
+        <Image source={{ uri: mainImage }} style={styles.image} contentFit="cover" />
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>Venda</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.favoriteBtn}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleRemoveFavorite(item.id);
+          }}
+        >
+          <Feather 
+            name="heart" 
+            size={20} 
+            color="#EF4444" 
+            fill="#EF4444" 
+          />
+        </TouchableOpacity>
+        
+        <View style={styles.info}>
+          <Text style={styles.price}>{formatPrice(item.price)}</Text>
+          <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+          <View style={styles.locationRow}>
+            <Feather name="map-pin" size={14} color="#64748B" />
+            <Text style={styles.locationText}>
+              {`${item.address.neighborhood}, ${item.address.city} - ${item.address.state}`}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -53,24 +91,30 @@ export default function FavoritesScreen() {
         <Text style={styles.headerTitle}>Meus Favoritos</Text>
       </View>
 
-      <FlatList
-        data={favoriteProperties}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Feather name="heart" size={64} color="#E2E8F0" />
-            <Text style={styles.emptyText}>Você ainda não salvou nenhum imóvel.</Text>
-            <TouchableOpacity 
-              style={styles.exploreBtn}
-              onPress={() => router.push('/(tabs)')}
-            >
-              <Text style={styles.exploreBtnText}>Explorar Imóveis</Text>
-            </TouchableOpacity>
-          </View>
-        }
-      />
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#0A73D9" />
+        </View>
+      ) : (
+        <FlatList
+          data={favoriteProperties}
+          renderItem={renderItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Feather name="heart" size={64} color="#E2E8F0" />
+              <Text style={styles.emptyText}>Você ainda não salvou nenhum imóvel.</Text>
+              <TouchableOpacity 
+                style={styles.exploreBtn}
+                onPress={() => router.push('/(tabs)')}
+              >
+                <Text style={styles.exploreBtnText}>Explorar Imóveis</Text>
+              </TouchableOpacity>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -79,6 +123,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     padding: 24,

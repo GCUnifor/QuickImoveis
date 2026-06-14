@@ -9,6 +9,7 @@ export default function ProfileScreen() {
   const { logout, userRole, user } = useAuth();
 
   const baseMenuItems = [
+    { icon: 'calculator', label: 'Editar Renda', iconLib: 'MaterialCommunityIcons' },
     { icon: 'settings', label: 'Configurações', iconLib: 'Feather' },
     { icon: 'file-text', label: 'Termos e condições', iconLib: 'Feather' },
   ];
@@ -51,6 +52,10 @@ export default function ProfileScreen() {
               onPress={() => {
                 if (item.label === 'Meus imóveis') {
                   router.push('/my-properties' as any);
+                } else if (item.label === 'Editar Renda') {
+                  router.push('/simulator' as any);
+                } else if (item.label === 'Termos e condições') {
+                  router.push('/terms' as any);
                 }
               }}
             >
